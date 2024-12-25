@@ -23,20 +23,20 @@ class SpeechEncoder(nn.Module):
         assert train_mode in ["adapter", "full"]
         super(SpeechEncoder, self).__init__()
 
-        feature_extractor = Wav2Vec2FeatureExtractor(
-            feature_size=1,
-            sampling_rate=16000,
-            padding_value=0.0,
-            do_normalize=True,
-            return_attention_mask=False,
-        )
+        # feature_extractor = Wav2Vec2FeatureExtractor(
+        #     feature_size=1,
+        #     sampling_rate=16000,
+        #     padding_value=0.0,
+        #     do_normalize=True,
+        #     return_attention_mask=False,
+        # )
         self.device = device
-        self.processor = AutoProcessor.from_pretrained("facebook/hubert-large-ls960-ft")
+        self.processor = AutoProcessor.from_pretrained(model_id, local_files_only=True)
         self.time_reduction_factor = int(
             self.processor.feature_extractor.sampling_rate / 50
         )
         self.padding_length = 320
-        self.model = AutoModel.from_pretrained(model_id).to(self.device,dtype=torch.bfloat16)
+        self.model = AutoModel.from_pretrained(model_id, local_files_only=True).to(self.device,dtype=torch.bfloat16)
         self.model_output_dim = self.model.config.hidden_size
         self.downsample_K = downsample_K
         self.project_dim = project_dim
