@@ -1,0 +1,12 @@
+bitsandbytes
+deepspeed
+einops
+triton
+rwkv-fla
+rwkv
+transformers
+GPUtil
+plotly
+lightning
+gradio
+datasets
