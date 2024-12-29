@@ -110,6 +110,13 @@ class WorldDataset(Dataset):
             # 打开并读取 JSON 文件
             with open(f'{args.data_file}/transcript.json', 'r') as file:
                 self.data = list(json.load(file).items())
+        elif args.data_type =='hf':
+            from datasets import load_dataset
+            dataset = load_dataset(args.data_file)
+            self.data = dataset['train']
+            print(len(dataset['train']))
+            # print(dataset['train'][0])
+            # self.data = dataset["ENGLISH"]
 
         else:
             self.data = pd.read_parquet(args.data_file)
@@ -144,8 +151,13 @@ class WorldDataset(Dataset):
             audio, sample_rate = librosa.load(mod_path, sr=16000)  # sr=None 保持原采样率
             sign,_ = self.speech_encoder(audio)
             token = torch.tensor(pipeline.encode(f'Assistant: {data_answer}\x17'))
-            print(f'Assistant: {data_answer}\x17')
-
+        elif args.data_type =='hf':
+            sample = self.data[idx]
+            audio = sample['audio']
+            data_answer = sample['text'] #####caption
+            audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+            sign,_ = self.speech_encoder(audio)
+            token = torch.tensor(pipeline.encode(f'Assistant: {data_answer}\x17'))
         else:
             data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])
             data_answer = self.data['answer'][idx]

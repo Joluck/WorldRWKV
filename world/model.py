@@ -75,17 +75,10 @@ class RWKV(pl.LightningModule):
             y_token = F.pad(padded_token, (signal.size(1)-1, 0), value=0)
 
             mask[signal.size(1) : -pad_len] = 1 
-            #print(y_token)
-            #token_emb = self.emb(token)
-            #signal_emb  = self.adapter(signal)
-            #x_emb = torch.cat([signal_emb,token_emb], dim=1)
-            #print(signal_emb.shape, y_token.shape,x_token.shape)
+            
             x.append(x_token)
             y.append(y_token)
 
-        # print(y_token)
-        # print(mask)
-        #x = torch.stack(x_token, dim=0)
         y = torch.stack(y, dim=0)
 
 

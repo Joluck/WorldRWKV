@@ -86,7 +86,8 @@ class SpeechEncoder(nn.Module):
             x, return_tensors="pt", padding=True, sampling_rate=16000
         ).to(self.device,dtype=torch.bfloat16)
         mask = self.calculate_mask(input_dict)
-        x = self.model(**input_dict).last_hidden_state
+        x = self.model(input_dict['input_values'].to('cuda:0')).last_hidden_state.to(self.device)
+        #x = self.model(**input_dict).last_hidden_state
         # reshape the output from [batch_size, num_frames, hidden_size] to [batch_size, num_frames//downsample_K, hidden_size*downsample_K]
         x = x.unfold(1, self.downsample_K, self.downsample_K).flatten(2)
         #x = self.adapter(x)

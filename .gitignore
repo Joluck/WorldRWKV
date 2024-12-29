@@ -1,6 +1,7 @@
 __pycache__/
 wandb/
 src/__pycache__/
+world/__pycache__/
 demo/
 fla/
 web/page/merge_page.py
