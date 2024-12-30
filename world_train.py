@@ -123,6 +123,9 @@ def rwkv_train():
     #acc_grad_batchs
     parser.add_argument("--avg_loss", default=0, type=int)
 
+    parser.add_argument("--train_step", default="none", type=str)
+
+
 
     parser.add_argument("--sft_field", default=None, type=str, nargs='+', help='List of fields for SFT')
     parser.add_argument("--sft_split", default="train", type=str)
@@ -263,17 +266,19 @@ def rwkv_train():
     from world.model import RWKV
     from world.dataset import WorldDataset
     from world.speech_encoder import SpeechEncoder
-    speech_encoder = SpeechEncoder(
-            '/home/rwkv/JL/audio',
-            args.n_embd,
-            downsample_K=5,
-            hidden_dim=2048,
-            train_mode="adapter",
-            device='cuda',
-        )
-    model = RWKV(args, modality=speech_encoder)
-    # for param in model.modality.parameters():
-    #     param.requires_grad = False
+    # speech_encoder = SpeechEncoder(
+    #         '/home/rwkv/JL/audio',
+    #         args.n_embd,
+    #         downsample_K=5,
+    #         hidden_dim=2048,
+    #         train_mode="adapter",
+    #         device='cuda',
+    #     )
+    model = RWKV(args)
+    if args.train_step=='first':
+        model.requires_grad_(False)
+        for param in model.adapter.parameters():
+            param.requires_grad = True
 
     rank_zero_info(f"########## Loading {args.load_model}... ##########")
     model.load_state_dict(torch.load(
