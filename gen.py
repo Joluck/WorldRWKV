@@ -13,7 +13,7 @@ CHAT_LANG = 'Chinese'
 from infer.rwkv.model import RWKV # pip install rwkv
 from infer.rwkv.utils import PIPELINE, PIPELINE_ARGS
 
-model = RWKV(model='/home/rwkv/model/asr', strategy='cuda fp16')
+model = RWKV(model='/home/rwkv/JL/out_model/pretrain-second3/rwkv-0', strategy='cuda fp16')
 #model ='rwkv'
 pipeline = PIPELINE(model, "rwkv_vocab_v20230424")
 
@@ -30,13 +30,13 @@ print('RWKV finish!!!')
 from world.speech_encoder import SpeechEncoder
 
 speech_encoder = SpeechEncoder(
-    '/home/rwkv/model/audio',
+    '/home/rwkv/JL/audio',
     768,
     downsample_K=5,
     hidden_dim=2048,
     train_mode="adapter",
     device='cuda',
-)
+).to('cuda', torch.bfloat16)
 
 
 import librosa
@@ -44,6 +44,6 @@ msg = 'Assistant:'
 
 
 def audio_to_text(audio):
-    y, _ = speech_encoder(audio)
+    y= speech_encoder(audio)
     result = pipeline.generate(msg, token_count=500, args=args, callback=None, state=None, sign=y)
     return result

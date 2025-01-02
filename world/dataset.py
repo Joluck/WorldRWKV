@@ -104,13 +104,15 @@ class WorldDataset(Dataset):
         self.index_manager = None
         self.emb = emb
 
-        if args.data_type =='origin':
-            import json
+        if args.data_type =='wav':
+            import jsonlines
 
             # 打开并读取 JSON 文件
-            with open(f'{args.data_file}/transcript.json', 'r') as file:
-                self.data = list(json.load(file).items())
-        elif args.data_type =='hf':
+            #with open(f'{args.data_file}/answer.jsonl', 'r') as file:
+            with jsonlines.open(f'{args.data_file}/answer.jsonl') as file:
+                self.data = list(file)
+                
+        elif args.data_type =='hf' or args.data_type =='qa':
             from datasets import load_dataset
             dataset = load_dataset(args.data_file)
             self.data = dataset['train']
@@ -121,14 +123,14 @@ class WorldDataset(Dataset):
         else:
             self.data = pd.read_parquet(args.data_file)
 
-        self.speech_encoder = SpeechEncoder(
-            '/home/rwkv/JL/audio',
-            args.n_embd,
-            downsample_K=5,
-            hidden_dim=2048,
-            train_mode="adapter",
-            device='cuda',
-        )
+        # self.speech_encoder = SpeechEncoder(
+        #     '/home/rwkv/JL/audio',
+        #     args.n_embd,
+        #     downsample_K=5,
+        #     hidden_dim=2048,
+        #     train_mode="adapter",
+        #     device='cuda',
+        # )
         
 
     def setup(self, rank, world_size, devices, shuffle):
@@ -143,27 +145,39 @@ class WorldDataset(Dataset):
     def __getitem__(self, idx):
         idx = self.index_manager.get_next_idx(idx_t=idx) if self.index_manager else idx
         args = self.args
-        if args.data_type =='origin':
+        if args.data_type =='wav':
 
-            mod_name = self.data[idx][0]
-            data_answer = self.data[idx][1]
-            mod_path = f'{args.data_file}/wavs/{mod_name}'
+            mod_name = self.data[idx]['file_name']
+            data_answer = self.data[idx]['answer']
+            mod_path = f'{args.data_file}/{mod_name}'
             audio, sample_rate = librosa.load(mod_path, sr=16000)  # sr=None 保持原采样率
-            sign,_ = self.speech_encoder(audio)
-            token = torch.tensor(pipeline.encode(f'Assistant: {data_answer}\x17'))
+            #sign,_ = self.speech_encoder(audio)
+            sign = audio
+            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
         elif args.data_type =='hf':
             sample = self.data[idx]
             audio = sample['audio']
             data_answer = sample['text'] #####caption
             audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-            sign,_ = self.speech_encoder(audio)
-            token = torch.tensor(pipeline.encode(f'Assistant: {data_answer}\x17'))
+            #sign,_ = self.speech_encoder(audio)
+            sign = audio
+            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        elif args.data_type =='qa':
+            sample = self.data[idx]
+            audio = sample['speech_cosy'][0]
+            #print(audio)
+            data_answer = sample['answer'] #####caption
+            #audio = librosa.resample(audio,orig_sr= 16000,target_sr= 16000)  # sr=None 保持原采样率
+            #sign,_ = self.speech_encoder(audio)
+            sign = audio
+            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
         else:
             data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])
             data_answer = self.data['answer'][idx]
             audio = librosa.resample(data_audio['array'],orig_sr= 48000,target_sr= 16000)
-            sign,_ = self.speech_encoder(audio)
-            token = torch.tensor(pipeline.encode(f'Assistant: {data_answer}\x17'))
+            #sign,_ = self.speech_encoder(audio)
+            sign = audio
+            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
         #print(idx, f'Assistant: {data_answer}\x17')
         return sign, token
     

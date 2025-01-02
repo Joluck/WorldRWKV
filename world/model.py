@@ -18,7 +18,7 @@ if importlib.util.find_spec('deepspeed'):
     
 from .block import Block
 from .loss import L2Wrap
-
+from .speech_encoder import SpeechEncoder
 class RWKV(pl.LightningModule):
     def __init__(self, args, modality=None):
         super().__init__()
@@ -45,10 +45,17 @@ class RWKV(pl.LightningModule):
         self.ln_out = nn.LayerNorm(args.n_embd)
         self.head = nn.Linear(args.n_embd, args.vocab_size, bias=False)
 
-        #self.modality = modality
+        # self.modality = modality
+        self.modality = SpeechEncoder(
+            '/home/rwkv/JL/audio',
+            args.n_embd,
+            downsample_K=5,
+            hidden_dim=2048,
+            device='cuda'
+        )
 
 
-    def pad_mod(self, tensor_list, modality_list):
+    def pad_mod(self, tensor_list, signal_list):
         """
         对一个包含不同长度张量的列表进行填充，使所有张量的长度相同且为16的整数倍，并生成掩码。
         参数:
@@ -61,9 +68,13 @@ class RWKV(pl.LightningModule):
         # 找到列表中最大长度
         # for token, signal in zip(tensor_list, modality_list):
         #     max_len = token.size(0) + signal.size(0)
+        modality_list = [self.modality(signal) for signal in signal_list]
         max_len = max((token.size(0) + signal.size(1)) for token, signal in zip(tensor_list, modality_list))
         # 计算目标长度（向上取整到16的整数倍）
         target_len = ((max_len + 15) // 16 * 16)+1
+
+        if self.args.ctx_len is not None:
+            target_len = min(target_len, self.args.ctx_len+1)
 
         masks = torch.zeros((len(tensor_list), target_len-1), dtype=torch.int32)
         x = []
@@ -71,6 +82,7 @@ class RWKV(pl.LightningModule):
         for token, signal, mask in zip(tensor_list, modality_list, masks):
             pad_len = target_len-(token.size(0) + signal.size(1))
             padded_token = F.pad(token, (0, pad_len), value=0)
+
             x_token = padded_token[:-1]
             y_token = F.pad(padded_token, (signal.size(1)-1, 0), value=0)
 
@@ -80,7 +92,6 @@ class RWKV(pl.LightningModule):
             y.append(y_token)
 
         y = torch.stack(y, dim=0)
-
 
        
         return modality_list, x, y, masks.cuda()

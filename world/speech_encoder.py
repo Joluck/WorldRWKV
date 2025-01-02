@@ -36,7 +36,7 @@ class SpeechEncoder(nn.Module):
             self.processor.feature_extractor.sampling_rate / 50
         )
         self.padding_length = 320
-        self.model = AutoModel.from_pretrained(model_id, local_files_only=True).to(self.device,dtype=torch.bfloat16)
+        self.model = AutoModel.from_pretrained(model_id, local_files_only=True)
         self.model_output_dim = self.model.config.hidden_size
         self.downsample_K = downsample_K
         self.project_dim = project_dim
@@ -45,12 +45,12 @@ class SpeechEncoder(nn.Module):
         else:
             self.hidden_dim = hidden_dim
         # adapter shall be a Linear(Relu(Linear)) structure
-        self.adapter = nn.Sequential(
-            nn.Linear(self.model_output_dim * self.downsample_K, self.hidden_dim),
-            nn.ReLU(),
-            nn.Linear(self.hidden_dim, self.project_dim),
-        ).to(self.device,dtype=torch.bfloat16)
-        self.set_gradient(train_mode)
+        # self.adapter = nn.Sequential(
+        #     nn.Linear(self.model_output_dim * self.downsample_K, self.hidden_dim),
+        #     nn.ReLU(),
+        #     nn.Linear(self.hidden_dim, self.project_dim),
+        # ).to(self.device,dtype=torch.bfloat16)
+        #self.set_gradient(train_mode)
 
     def set_gradient(self, train_mode):
         """
@@ -85,14 +85,14 @@ class SpeechEncoder(nn.Module):
         input_dict = self.processor(
             x, return_tensors="pt", padding=True, sampling_rate=16000
         ).to(self.device,dtype=torch.bfloat16)
-        mask = self.calculate_mask(input_dict)
-        x = self.model(input_dict['input_values'].to('cuda:0')).last_hidden_state.to(self.device)
-        #x = self.model(**input_dict).last_hidden_state
+        #mask = self.calculate_mask(input_dict)
+        #x = self.model(input_dict['input_values'].to('cuda:0')).last_hidden_state.to(self.device)
+        x = self.model(**input_dict).last_hidden_state
         # reshape the output from [batch_size, num_frames, hidden_size] to [batch_size, num_frames//downsample_K, hidden_size*downsample_K]
         x = x.unfold(1, self.downsample_K, self.downsample_K).flatten(2)
         #x = self.adapter(x)
-        mask = mask[:, : x.shape[1]]
-        return x, mask
+        #mask = mask[:, : x.shape[1]]
+        return x
     
 # speech_encoder = SpeechEncoder(
 #     '/home/rwkv/JL/audio',

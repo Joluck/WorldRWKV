@@ -266,15 +266,11 @@ def rwkv_train():
     from world.model import RWKV
     from world.dataset import WorldDataset
     from world.speech_encoder import SpeechEncoder
-    # speech_encoder = SpeechEncoder(
-    #         '/home/rwkv/JL/audio',
-    #         args.n_embd,
-    #         downsample_K=5,
-    #         hidden_dim=2048,
-    #         train_mode="adapter",
-    #         device='cuda',
-    #     )
-    model = RWKV(args)
+
+    model = RWKV(args, modality=None)
+
+    for param in model.modality.parameters():
+        param.requires_grad = False
     if args.train_step=='first':
         model.requires_grad_(False)
         for param in model.adapter.parameters():
