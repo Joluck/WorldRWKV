@@ -1,9 +1,12 @@
 import gradio as gr
 import os
 from datetime import datetime
-from gen import audio_to_text
+from gen import Worldinfer
 import librosa
 import numpy as np
+
+worldinfer = Worldinfer(model_path='/home/rwkv/JL/out_model/asr-step2/rwkv-0')
+
 def save_audio(audio):
     # 检查 audio 是否为 None
     if audio is None:
@@ -19,7 +22,7 @@ def save_audio(audio):
 
     # 重采样到 16000 Hz
     resampled_audio = librosa.resample(audio_data, orig_sr=sample_rate, target_sr=16000)
-    res = audio_to_text(resampled_audio)
+    res = worldinfer.generate(resampled_audio)
     return res
 
 iface = gr.Interface(

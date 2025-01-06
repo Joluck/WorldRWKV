@@ -88,6 +88,9 @@ class SpeechEncoder(nn.Module):
         #mask = self.calculate_mask(input_dict)
         #x = self.model(input_dict['input_values'].to('cuda:0')).last_hidden_state.to(self.device)
         x = self.model(**input_dict).last_hidden_state
+
+        if x.size(1)<5 or x.size(1)>5000:
+            return False
         # reshape the output from [batch_size, num_frames, hidden_size] to [batch_size, num_frames//downsample_K, hidden_size*downsample_K]
         x = x.unfold(1, self.downsample_K, self.downsample_K).flatten(2)
         #x = self.adapter(x)

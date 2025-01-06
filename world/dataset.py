@@ -114,9 +114,9 @@ class WorldDataset(Dataset):
                 
         elif args.data_type =='hf' or args.data_type =='qa':
             from datasets import load_dataset
-            dataset = load_dataset(args.data_file)
-            self.data = dataset['train']
-            print(len(dataset['train']))
+            dataset = load_dataset(args.data_file, split="train[:460000]")
+            self.data = dataset
+            print(len(dataset))
             # print(dataset['train'][0])
             # self.data = dataset["ENGLISH"]
 
@@ -164,12 +164,13 @@ class WorldDataset(Dataset):
             token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
         elif args.data_type =='qa':
             sample = self.data[idx]
-            audio = sample['speech_cosy'][0]
-            #print(audio)
+            # audio = sample['speech_cosy'][0]
+            # data_answer = sample['answer'] 
+
+            audio = sample['question_audio']
             data_answer = sample['answer'] #####caption
-            #audio = librosa.resample(audio,orig_sr= 16000,target_sr= 16000)  # sr=None 保持原采样率
-            #sign,_ = self.speech_encoder(audio)
-            sign = audio
+            sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+
             token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
         else:
             data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])

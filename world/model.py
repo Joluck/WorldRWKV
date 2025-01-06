@@ -68,8 +68,25 @@ class RWKV(pl.LightningModule):
         # 找到列表中最大长度
         # for token, signal in zip(tensor_list, modality_list):
         #     max_len = token.size(0) + signal.size(0)
-        modality_list = [self.modality(signal) for signal in signal_list]
-        max_len = max((token.size(0) + signal.size(1)) for token, signal in zip(tensor_list, modality_list))
+        #modality_list = [self.modality(signal) for signal in signal_list]
+        # cur_len=0
+        # for signal in signal_list:
+        #     modality = self.modality(signal)
+        #     if modality.size(1)>self.args.ctx_len:
+        #         cur_len+=1
+        #     modality_list.append(modality)
+        modality_list = []
+        #max_len = max((token.size(0) + signal.size(1)) for token, signal in zip(tensor_list, modality_list))
+        max_len = 0
+        for token, signal in zip(tensor_list, signal_list):
+
+            modality = self.modality(signal)
+            if modality is False:
+                modality_list.append(False)
+                continue
+            modality_list.append(modality)
+            max_len = max(token.size(0) + modality.size(1), max_len)
+
         # 计算目标长度（向上取整到16的整数倍）
         target_len = ((max_len + 15) // 16 * 16)+1
 
@@ -79,8 +96,13 @@ class RWKV(pl.LightningModule):
         masks = torch.zeros((len(tensor_list), target_len-1), dtype=torch.int32)
         x = []
         y = []
+        s = []
+        m = []
         for token, signal, mask in zip(tensor_list, modality_list, masks):
+            if signal is False:
+                continue
             pad_len = target_len-(token.size(0) + signal.size(1))
+            
             padded_token = F.pad(token, (0, pad_len), value=0)
 
             x_token = padded_token[:-1]
@@ -88,13 +110,15 @@ class RWKV(pl.LightningModule):
 
             mask[signal.size(1) : -pad_len] = 1 
             
+            s.append(signal)
             x.append(x_token)
             y.append(y_token)
+            m.append(mask)
 
         y = torch.stack(y, dim=0)
-
+        m = torch.stack(m, dim=0).cuda()
        
-        return modality_list, x, y, masks.cuda()
+        return s, x, y, m
 
 
     def forward(self, idx, signs= None):
@@ -139,7 +163,10 @@ class RWKV(pl.LightningModule):
         mask = mask.view(-1)
         sum_mask = torch.sum(mask).item()
         logits = self(idx,sign)
-        #max_indices = torch.argmax(logits, dim=-1)
+        max_indices = torch.argmax(logits, dim=-1)
+        # print('x:', max_indices)
+        # print('y:', targets)
+        # print('mask:', mask)
 
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1), reduction='none')
         loss = torch.sum(loss * mask) / sum_mask

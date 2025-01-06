@@ -295,8 +295,7 @@ class RWKV(MyModule):
             sign = self.adapter(sign.squeeze(0))
 
             x = torch.cat((sign,x.to('cuda')), dim=0)
-        else:
-            x = self.z['emb.weight'][idx]
+
 
         x = F.layer_norm(x, (self.args.n_embd,), weight=self.z['blocks.0.ln0.weight'], bias=self.z['blocks.0.ln0.bias'])
 
