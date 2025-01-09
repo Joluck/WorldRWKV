@@ -278,6 +278,8 @@ def rwkv_train():
     # )
     # model = RWKV(args, modality=speech_encoder)
     model = RWKV(args)
+    print(model)
+
     for param in model.modality.parameters():
         param.requires_grad = False
     if args.train_step=='step1':
@@ -324,7 +326,8 @@ def rwkv_train():
     else:
         shuffle = False
 
-    train_data = DataLoader(
+    if args.data_type == "jsonl":
+            train_data = DataLoader(
             train_data,
             shuffle=shuffle,
             pin_memory=True,
@@ -332,8 +335,18 @@ def rwkv_train():
             num_workers=1,
             persistent_workers=False,
             drop_last=True,
-            collate_fn = collate_fn
         )
+    else:
+        train_data = DataLoader(
+                train_data,
+                shuffle=shuffle,
+                pin_memory=True,
+                batch_size=args.micro_bsz,
+                num_workers=1,
+                persistent_workers=False,
+                drop_last=True,
+                collate_fn = collate_fn
+            )
 
     trainer.fit(model, train_data)
 

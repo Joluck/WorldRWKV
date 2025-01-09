@@ -1,5 +1,5 @@
 load_model='/home/rwkv/JL/out_model/asr-step1/rwkv-0.pth'
-proj_dir='/home/rwkv/JL/out_model/asr-step2'
+proj_dir='/home/rwkv/JL/out_model/asr-step2ttt'
 data_file='/home/rwkv/JL/data/fixie-ai-librispeech_asr/clean'
 n_layer=12
 n_embd=768

@@ -19,6 +19,10 @@ if importlib.util.find_spec('deepspeed'):
 from .block import Block
 from .loss import L2Wrap
 from .speech_encoder import SpeechEncoder
+
+from rwkv.utils import PIPELINE
+pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")
+
 class RWKV(pl.LightningModule):
     def __init__(self, args, modality=None):
         super().__init__()
@@ -65,16 +69,7 @@ class RWKV(pl.LightningModule):
             padded_tensor (torch.Tensor): 填充后的张量，形状为 [batch_size, target_len]。
             mask (torch.Tensor): 填充掩码，1 表示有效数据，0 表示填充部分。
         """
-        # 找到列表中最大长度
-        # for token, signal in zip(tensor_list, modality_list):
-        #     max_len = token.size(0) + signal.size(0)
-        #modality_list = [self.modality(signal) for signal in signal_list]
-        # cur_len=0
-        # for signal in signal_list:
-        #     modality = self.modality(signal)
-        #     if modality.size(1)>self.args.ctx_len:
-        #         cur_len+=1
-        #     modality_list.append(modality)
+
         modality_list = []
         #max_len = max((token.size(0) + signal.size(1)) for token, signal in zip(tensor_list, modality_list))
         max_len = 0
@@ -154,25 +149,32 @@ class RWKV(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         args = self.args
+        if args.data_type == "jsonl": ########test
+            idx, targets, mask = batch
+            
+            mask = mask.view(-1)
+            sum_mask = torch.sum(mask).item()
+            logits = self(idx)
 
-        #sign, idx, targets, mask = batch
+            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1), reduction='none')
+            loss = torch.sum(loss * mask) / sum_mask
+            return loss
+        
         signs, tokens = batch
-        #sign, idx, targets, mask = self.merge_modality(signs, tokens)
         sign, idx, targets, mask = self.pad_mod(tokens, signs)
 
         mask = mask.view(-1)
         sum_mask = torch.sum(mask).item()
         logits = self(idx,sign)
-        max_indices = torch.argmax(logits, dim=-1)
-        # print('x:', max_indices)
-        # print('y:', targets)
-        # print('mask:', mask)
+        #max_indices = torch.argmax(logits, dim=-1)
+        #print(max_indices)
+        # print('x:', max_indices,'\n','y:', targets,'\n', 'mask:', mask,'\n')
+
 
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1), reduction='none')
         loss = torch.sum(loss * mask) / sum_mask
     
-
-        return L2Wrap.apply(loss, logits)
+        return loss
 
 
     def configure_optimizers(self):

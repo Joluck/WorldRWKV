@@ -15,7 +15,6 @@ from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from lightning_utilities.core.rank_zero import rank_zero_info
 from rwkv.utils import PIPELINE
-import time
 pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")
 
 import pandas as pd
@@ -23,8 +22,6 @@ import librosa
 import io
 import soundfile as sf
 # 读取parquet文件
-
-from .speech_encoder import SpeechEncoder
 
 def bytes_to_audio(audio_bytes):
     with io.BytesIO(audio_bytes) as buf:
@@ -114,11 +111,18 @@ class WorldDataset(Dataset):
                 
         elif args.data_type =='hf' or args.data_type =='qa':
             from datasets import load_dataset
-            dataset = load_dataset(args.data_file, split="train[:460000]")
+            dataset = load_dataset(args.data_file, split="train")
             self.data = dataset
             print(len(dataset))
             # print(dataset['train'][0])
             # self.data = dataset["ENGLISH"]
+        elif args.data_type == "jsonl":
+            from rwkv.utils import PIPELINE
+            self.pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")
+            import jsonlines
+
+            with jsonlines.open(args.data_file) as file:
+                self.data = list(file)
 
         else:
             self.data = pd.read_parquet(args.data_file)
@@ -168,10 +172,24 @@ class WorldDataset(Dataset):
             # data_answer = sample['answer'] 
 
             audio = sample['question_audio']
-            data_answer = sample['answer'] #####caption
+            data_answer = sample['answer'].replace('Omni', 'RWKV') #####captiondf['answer'].str.replace('Omni', 'RWKV', case=False, regex=False)
             sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
 
             token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        elif args.data_type == "jsonl":
+            ctx_len = args.ctx_len
+            req_len = ctx_len + 1
+            ctx = self.data[idx]['text']
+            token = torch.tensor(pipeline.encode(ctx))
+            token_len = len(token)
+            pad_len = req_len - token_len
+        
+            dix = F.pad(token, (0, pad_len), value=0)
+            x = dix[:-1]
+            y = dix[1:]
+            mask = torch.zeros(req_len - 1)
+            mask[:token_len - 1] = 1
+            return x, y, mask
         else:
             data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])
             data_answer = self.data['answer'][idx]

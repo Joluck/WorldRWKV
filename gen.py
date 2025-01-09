@@ -37,6 +37,18 @@ class Worldinfer():
             train_mode="adapter",
             device='cuda',
         ).to('cuda', torch.bfloat16)
+        self.modality.eval()
+        # def disable_dropout(model):
+        #     for module in model.modules():
+        #         if isinstance(module, torch.nn.Dropout):
+        #             module.p = 0  # 将 Dropout 的概率设置为 0
+
+        #     # 在模型初始化或推理前调用
+        # disable_dropout(self.modality)
+
+        # for name, module in self.modality.named_modules():
+        #     if isinstance(module, torch.nn.Dropout):
+        #         print(f"{name}: Dropout probability = {module.p}")
 
 
         self.msg = '\x16Assistant:'
@@ -46,11 +58,35 @@ class Worldinfer():
         y= self.modality(audio)
         result = self.pipeline.generate(self.msg, token_count=500, args=self.args, callback=None, state=None, sign=y)
         return result
-
-# worldinfer = Worldinfer(model_path='/home/rwkv/JL/out_model/asr-step2/rwkv-0')
+    
+    def nlp_gen(self, ctx):
+        result = self.pipeline.generate(ctx, token_count=500, args=self.args, callback=None, state=None)
+        return result
 
 # import librosa
-# msg = '\x16Assistant:'
+# worldinfer = Worldinfer(model_path='/home/rwkv/JL/out_model/tttt/rwkv-8')
+# audio, sample_rate = librosa.load('/home/rwkv/JL/audio-data/jl/wavs/audio-2025-01-06T08-04-47-957Z-ro9npx.wav', sr=16000)
+# res = worldinfer.generate(audio)
+# print(res)
+
+
+# filled_prompt = 'User: 好想睡觉\n\nAssistant:\n\nAssistant:'
+# res = worldinfer.nlp_gen(filled_prompt)
+# print(res)
+
+# filled_prompt = 'User: 我洗好澡了\n\nAssistant:'
+# res = worldinfer.nlp_gen(filled_prompt)
+# print(res)
+
+# filled_prompt = 'User: 你吃鸡粑粑不\n\nAssistant:'
+# res = worldinfer.nlp_gen(filled_prompt)
+# print(res)
+
+# filled_prompt = 'User: 我想问一下，如果房间比较小的话，有没有特别适合的墙纸款式呢？\n\nAssistant:'
+# res = worldinfer.nlp_gen(filled_prompt)
+# print(res)
+
+# import librosa
 # from datasets import load_dataset
 # dataset = load_dataset('/home/rwkv/JL/data/fixie-ai-librispeech_asr/clean')
 # data = dataset['test']

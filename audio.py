@@ -5,7 +5,7 @@ from gen import Worldinfer
 import librosa
 import numpy as np
 
-worldinfer = Worldinfer(model_path='/home/rwkv/JL/out_model/asr-step2/rwkv-0')
+worldinfer = Worldinfer(model_path='/home/rwkv/JL/out_model/world-step-cos/rwkv-0')
 
 def save_audio(audio):
     # 检查 audio 是否为 None
