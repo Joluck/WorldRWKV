@@ -172,7 +172,7 @@ class WorldDataset(Dataset):
             # data_answer = sample['answer'] 
 
             audio = sample['question_audio']
-            data_answer = sample['answer'].replace('Omni', 'RWKV') #####captiondf['answer'].str.replace('Omni', 'RWKV', case=False, regex=False)
+            data_answer = sample['answer']
             sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
 
             token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))

@@ -1,6 +1,6 @@
 load_model='/home/rwkv/JL/model/rwkv-x070-450m-world-v2.9-83%trained-20250101-ctx4k.pth'
-proj_dir='/home/rwkv/JL/out_model/world-step-cos'
-data_file='/home/rwkv/JL/audio-data/data'
+proj_dir='/home/rwkv/JL/out_model/world-qa'
+data_file='/home/rwkv/JL/audio-data/new'
 load_moda='/home/rwkv/JL/audio'
 
 n_layer=24
