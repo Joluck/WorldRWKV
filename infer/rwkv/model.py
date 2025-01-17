@@ -226,9 +226,9 @@ class RWKV(MyModule):
         self.eval()
         args = types.SimpleNamespace()
         self.args = args
-        args.MODEL_NAME = model
+        # args.MODEL_NAME = model
 
-        print(f'Loading {model} ({strategy})\n')
+        # print(f'Loading {model} ({strategy})\n')
 
         ss = strategy.split(' ')
         DEVICE = ss[0]
@@ -241,8 +241,8 @@ class RWKV(MyModule):
         else:
             assert False, "currently rwkv7 strategy must be: cuda/cpu fp16/fp32/bf16"
         
-        self.z = torch.load(args.MODEL_NAME + '.pth', map_location=DEVICE)
-
+        # self.z = torch.load(args.MODEL_NAME + '.pth', map_location=DEVICE)
+        self.z = model
 
         # for k,v in self.z.items():
         #     print(k, v.shape)
@@ -270,15 +270,6 @@ class RWKV(MyModule):
         z['blocks.0.att.v1'] = z['blocks.0.att.a1'] # actually ignored
         z['blocks.0.att.v2'] = z['blocks.0.att.a2'] # actually ignored
 
-        self.adapter = nn.Sequential(
-            nn.Linear(1024 * 5, 2048),
-            nn.ReLU(),
-            nn.Linear(2048, args.n_embd),
-        ).to(DTYPE).cuda()
-        self.adapter[0].weight = nn.Parameter(z['adapter.0.weight']).cuda()
-        self.adapter[0].bias = nn.Parameter(z['adapter.0.bias']).cuda()
-        self.adapter[2].weight = nn.Parameter(z['adapter.2.weight']).cuda()
-        self.adapter[2].bias = nn.Parameter(z['adapter.2.bias']).cuda()
     def forward(self, idx, state, full_output=False, sign=None):
         if state == None:
             state = [None for _ in range(self.args.n_layer * 3)]
@@ -287,13 +278,9 @@ class RWKV(MyModule):
                 state[i*3+1] = torch.zeros((self.args.n_embd // self.args.head_size, self.args.head_size, self.args.head_size), dtype=torch.float, requires_grad=False, device=DEVICE)
                 state[i*3+2] = torch.zeros(self.args.n_embd, dtype=DTYPE, requires_grad=False, device=DEVICE)
 
-
         x = self.z['emb.weight'][idx]
-        if sign!=None :
-
-            sign = sign.to(DTYPE)
-            sign = self.adapter(sign.squeeze(0))
-
+        if isinstance(sign, torch.Tensor):
+            sign = sign.squeeze(0)
             x = torch.cat((sign,x.to('cuda')), dim=0)
 
 

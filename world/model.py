@@ -36,11 +36,11 @@ class RWKV(pl.LightningModule):
         assert args.dim_att % 32 == 0
         assert args.dim_ffn % 32 == 0
 
-        self.adapter = nn.Sequential(
-            nn.Linear(1024 * 5, 2048),
-            nn.ReLU(),
-            nn.Linear(2048, args.n_embd),
-        )
+        # self.adapter = nn.Sequential(
+        #     nn.Linear(1024 * 5, 2048),
+        #     nn.ReLU(),
+        #     nn.Linear(2048, args.n_embd),
+        # )
 
         self.emb = nn.Embedding(args.vocab_size, args.n_embd)
 
@@ -49,14 +49,14 @@ class RWKV(pl.LightningModule):
         self.ln_out = nn.LayerNorm(args.n_embd)
         self.head = nn.Linear(args.n_embd, args.vocab_size, bias=False)
 
-        # self.modality = modality
-        self.modality = SpeechEncoder(
-            '/home/rwkv/JL/audio',
-            args.n_embd,
-            downsample_K=5,
-            hidden_dim=2048,
-            device='cuda'
-        )
+        self.modality = modality
+        # self.modality = SpeechEncoder(
+        #     '/home/rwkv/JL/audio',
+        #     args.n_embd,
+        #     downsample_K=5,
+        #     hidden_dim=2048,
+        #     device='cuda'
+        # )
 
 
     def pad_mod(self, tensor_list, signal_list):
@@ -124,7 +124,7 @@ class RWKV(pl.LightningModule):
         x_list = []
         if signs!=None:
             for token, sign in zip(idx, signs):
-                sign_emb = self.adapter(sign)
+                sign_emb = sign#self.adapter(sign)
                 x_emb = self.emb(token)
             # #print(sign_emb.shape, x.shape)
                 x_list.append(torch.cat([sign_emb.squeeze(0),x_emb], dim=0))

@@ -37,7 +37,11 @@ def cosine_decay_with_final_lr(initial_lr, final_lr, current_step, total_steps):
     Returns:
         float: Decayed learning rate.
     """
-    return final_lr + 0.5 * (initial_lr - final_lr) * (1 + math.cos(math.pi * current_step / total_steps))
+    if current_step>=total_steps:
+        lr = final_lr
+    else:
+        lr = final_lr + 0.5 * (initial_lr - final_lr) * (1 + math.cos(math.pi * current_step / total_steps))
+    return lr
 
 class train_callback(pl.Callback):
     def __init__(self, args):
@@ -220,6 +224,7 @@ class train_callback(pl.Callback):
     def on_train_epoch_end(self, trainer, pl_module):
         args = self.args
         to_save_dict = {}
+
         if (trainer.is_global_zero) or ('deepspeed_stage_3' in args.strategy):  # save pth
             if (args.epoch_save > 0 and trainer.current_epoch % args.epoch_save == 0) or (trainer.current_epoch == args.epoch_count - 1):
                 if args.data_type == 'wds_img':
@@ -229,42 +234,30 @@ class train_callback(pl.Callback):
                             to_save_dict[k] = raw_dict[k]
                 else:
                     to_save_dict = pl_module.state_dict()
+                rwkv_dict={}
+                for k, state in to_save_dict.items():
+                    if 'modality.model'  in k and 'moda' not in args.train_step:
+                        continue
 
-                if args.state_tune or args.train_type=='state':
-                    peft_dict = {}
-                    for name, state in to_save_dict.items():
-                        if 'state' in name:
-                            peft_dict[name] = state
-                    to_save_dict = peft_dict
+                    if 'modality.adapter'  in k and 'adapter' not in args.train_step:
+                        continue
+                    rwkv_dict[k] = state
+                to_save_dict = rwkv_dict
 
-                if args.peft!='none':
-                    peft_dict = {}
-                    for name, state in to_save_dict.items():
-                        if len(args.load_model) == 0:
-                            if 'emb' in name or 'head' in name or 'ln' in name:
-                                peft_dict[name] = state
-                        for part in args.train_parts:
-                            if part in name:
-                                peft_dict[name] = state
-                        if args.peft=='pissa' and ('lora' in name):
-                            peft_dict[name] = state
-                        elif args.peft in name:
-                            peft_dict[name] = state
-                    # if args.peft=='lora' or args.peft=='pissa':
-                    #     for name, state in to_save_dict.items():
-                           
-                    #         if ('.lora_' in name):
-                    #             peft_dict[name] = state
-                    # if args.peft=='bone':
-                    #     for name, state in to_save_dict.items():
-                    #         if len(args.load_model) == 0:
-                    #             if 'emb' in name or 'head' in name or 'ln' in name:
-                    #                 peft_dict[name] = state
-                    #         if ('.gbmm' in name):
-                    #             peft_dict[name] = state
-                    to_save_dict = peft_dict
+                # my_save(
+                #         args, trainer,
+                #         to_save_dict,
+                #         f"{args.proj_dir}/rwkv-{args.epoch_begin + trainer.current_epoch}.pth",
+                #     )
+
 
                 try:
+                    # my_save(
+                    #     args, trainer,
+                    #     to_save_modality,
+                    #     f"{args.proj_dir}/rwkv-{args.epoch_begin + trainer.current_epoch}.modality",
+                    # )
+
                     my_save(
                         args, trainer,
                         to_save_dict,

@@ -44,28 +44,14 @@ class SpeechEncoder(nn.Module):
             self.hidden_dim = self.project_dim * 2
         else:
             self.hidden_dim = hidden_dim
-        # adapter shall be a Linear(Relu(Linear)) structure
-        # self.adapter = nn.Sequential(
-        #     nn.Linear(self.model_output_dim * self.downsample_K, self.hidden_dim),
-        #     nn.ReLU(),
-        #     nn.Linear(self.hidden_dim, self.project_dim),
-        # ).to(self.device,dtype=torch.bfloat16)
+        #adapter shall be a Linear(Relu(Linear)) structure
+        self.adapter = nn.Sequential(
+            nn.Linear(self.model_output_dim * self.downsample_K, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.project_dim),
+        )#.to(self.device,dtype=torch.bfloat16)
         #self.set_gradient(train_mode)
 
-    def set_gradient(self, train_mode):
-        """
-        if train_mode is "adapter", only train the adapter layers, otherwise train the whole model
-        """
-        if train_mode == "adapter":
-            for param in self.model.parameters():
-                param.requires_grad = False
-            for param in self.adapter.parameters():
-                param.requires_grad = True
-        else:
-            for param in self.model.parameters():
-                param.requires_grad = True
-            for param in self.adapter.parameters():
-                param.requires_grad = True
 
     def calculate_mask(self, input_dict):
         """
@@ -93,9 +79,21 @@ class SpeechEncoder(nn.Module):
             return False
         # reshape the output from [batch_size, num_frames, hidden_size] to [batch_size, num_frames//downsample_K, hidden_size*downsample_K]
         x = x.unfold(1, self.downsample_K, self.downsample_K).flatten(2)
-        #x = self.adapter(x)
+        x = self.adapter(x)
         #mask = mask[:, : x.shape[1]]
         return x
+    
+
+# class SpeechAdapter(SpeechEncoder):
+#     def __init__(self, *args, **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.adapter = nn.Sequential(
+#             nn.Linear(self.model_output_dim * self.downsample_K, self.hidden_dim),
+#             nn.ReLU(),
+#             nn.Linear(self.hidden_dim, self.project_dim),
+#         )
+#     def forward(self, x):
+#         return self.adapter(x)
     
 # speech_encoder = SpeechEncoder(
 #     '/home/rwkv/JL/audio',

@@ -125,7 +125,8 @@ def rwkv_train():
     #acc_grad_batchs
     parser.add_argument("--avg_loss", default=0, type=int)
 
-    parser.add_argument("--train_step", default="none", type=str)
+    parser.add_argument("--train_step", default=None, type=str, nargs='+', help='List of World encoder')
+
 
 
 
@@ -276,16 +277,28 @@ def rwkv_train():
     #     train_mode="adapter",
     #     device='cuda',
     # )
-    # model = RWKV(args, modality=speech_encoder)
-    model = RWKV(args)
+    speech_encoder = SpeechEncoder(
+            args.load_moda,
+            args.n_embd,
+            downsample_K=5,
+            hidden_dim=2048,
+            device='cuda'
+        )
+    model = RWKV(args, modality=speech_encoder)
+    #model = RWKV(args)
     print(model)
+    print(args.train_step)
 
-    for param in model.modality.parameters():
-        param.requires_grad = False
-    if args.train_step=='step1':
-        model.requires_grad_(False)
-        for param in model.adapter.parameters():
-            param.requires_grad = True
+    if 'moda' not in args.train_step:
+        for param in model.modality.model.parameters():
+            param.requires_grad = False
+    if 'adapter' not in args.train_step:
+        for param in model.modality.adapter.parameters():
+            param.requires_grad = False
+
+    # for name, param in model.named_parameters():
+    #     print(f"Parameter: {name}, Requires Grad: {param.requires_grad}")
+
 
     rank_zero_info(f"########## Loading {args.load_model}... ##########")
     model.load_state_dict(torch.load(
