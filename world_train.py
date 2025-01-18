@@ -269,32 +269,28 @@ def rwkv_train():
     from world.model import RWKV
     from world.dataset import WorldDataset
     from world.speech_encoder import SpeechEncoder
-    # speech_encoder = SpeechEncoder(
-    #     '/home/rwkv/JL/audio',
-    #     args.n_embd,
-    #     downsample_K=5,
-    #     hidden_dim=2048,
-    #     train_mode="adapter",
-    #     device='cuda',
-    # )
-    speech_encoder = SpeechEncoder(
-            args.load_moda,
-            args.n_embd,
-            downsample_K=5,
-            hidden_dim=2048,
-            device='cuda'
-        )
-    model = RWKV(args, modality=speech_encoder)
-    #model = RWKV(args)
-    print(model)
-    print(args.train_step)
+    from world.world_load import WorldLoading
 
-    if 'moda' not in args.train_step:
-        for param in model.modality.model.parameters():
-            param.requires_grad = False
-    if 'adapter' not in args.train_step:
-        for param in model.modality.adapter.parameters():
-            param.requires_grad = False
+    model = WorldLoading(args)
+
+    # speech_encoder = SpeechEncoder(
+    #         args.load_moda,
+    #         args.n_embd,
+    #         downsample_K=5,
+    #         hidden_dim=2048,
+    #         device='cuda'
+    #     )
+    # model = RWKV(args, modality=speech_encoder)
+    # #model = RWKV(args)
+    # print(model)
+    # print(args.train_step)
+
+    # if 'moda' not in args.train_step:
+    #     for param in model.modality.model.parameters():
+    #         param.requires_grad = False
+    # if 'adapter' not in args.train_step:
+    #     for param in model.modality.adapter.parameters():
+    #         param.requires_grad = False
 
     # for name, param in model.named_parameters():
     #     print(f"Parameter: {name}, Requires Grad: {param.requires_grad}")

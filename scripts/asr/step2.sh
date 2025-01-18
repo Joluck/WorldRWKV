@@ -21,5 +21,5 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \
 --ctx_len $ctx_len --micro_bsz $micro_bsz \
 --epoch_steps $epoch_steps --epoch_count 1 --epoch_begin 0 --epoch_save $epoch_save \
 --lr_init 5e-5 --lr_final 1e-6 --warmup_steps 0 --beta1 0.9 --beta2 0.99 --adam_eps 1e-8 \
---accelerator gpu --devices 4 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
---my_testing "x070" --train_step adapter moda --wandb world-asr
+--accelerator gpu --devices 1 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
+--my_testing "x070" --train_step adapter rwkv

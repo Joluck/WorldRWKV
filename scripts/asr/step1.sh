@@ -22,4 +22,4 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \
 --epoch_steps $epoch_steps --epoch_count 1 --epoch_begin 0 --epoch_save $epoch_save \
 --lr_init 1e-4 --lr_final 1e-5 --warmup_steps 0 --beta1 0.9 --beta2 0.99 --adam_eps 1e-8 \
 --accelerator gpu --devices 4 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
---my_testing "x070" --train_step step1 --wandb world-asr
+--my_testing "x070" --train_step adapter --wandb world-asr

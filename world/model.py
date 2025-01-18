@@ -36,12 +36,6 @@ class RWKV(pl.LightningModule):
         assert args.dim_att % 32 == 0
         assert args.dim_ffn % 32 == 0
 
-        # self.adapter = nn.Sequential(
-        #     nn.Linear(1024 * 5, 2048),
-        #     nn.ReLU(),
-        #     nn.Linear(2048, args.n_embd),
-        # )
-
         self.emb = nn.Embedding(args.vocab_size, args.n_embd)
 
         self.blocks = nn.ModuleList([Block(args, i) for i in range(args.n_layer)])
@@ -50,13 +44,6 @@ class RWKV(pl.LightningModule):
         self.head = nn.Linear(args.n_embd, args.vocab_size, bias=False)
 
         self.modality = modality
-        # self.modality = SpeechEncoder(
-        #     '/home/rwkv/JL/audio',
-        #     args.n_embd,
-        #     downsample_K=5,
-        #     hidden_dim=2048,
-        #     device='cuda'
-        # )
 
 
     def pad_mod(self, tensor_list, signal_list):
