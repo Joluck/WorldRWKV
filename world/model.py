@@ -153,9 +153,16 @@ class RWKV(pl.LightningModule):
         mask = mask.view(-1)
         sum_mask = torch.sum(mask).item()
         logits = self(idx,sign)
-        #max_indices = torch.argmax(logits, dim=-1)
-        #print(max_indices)
-        # print('x:', max_indices,'\n','y:', targets,'\n', 'mask:', mask,'\n')
+        # max_indices = torch.argmax(logits, dim=-1)
+        # from rwkv.utils import PIPELINE
+        # pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")
+        # print(targets.shape)
+        # for i in range(args.micro_bsz):
+        #     q = pipeline.decode(max_indices[i][17:-20].tolist())
+        #     w = pipeline.decode(targets[i][17:-20].tolist())
+        #     print('x:', q,'\n','y:', w,'\n', '\n\n')
+        #     print(max_indices[i][16:25], targets[i][16:25])
+
 
 
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1), reduction='none')

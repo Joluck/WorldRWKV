@@ -16,13 +16,19 @@ from torch.utils.data import DataLoader
 from lightning_utilities.core.rank_zero import rank_zero_info
 from rwkv.utils import PIPELINE
 pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")
+from PIL import Image
 
 import pandas as pd
 import librosa
 import io
 import soundfile as sf
 # 读取parquet文件
+from torchvision import transforms
 
+transform = transforms.Compose([
+    transforms.Resize((512, 512)),
+    transforms.ToTensor()  # 将图像转换为张量
+])
 def bytes_to_audio(audio_bytes):
     with io.BytesIO(audio_bytes) as buf:
         # 使用 soundfile 读取音频数据
@@ -108,8 +114,14 @@ class WorldDataset(Dataset):
             #with open(f'{args.data_file}/answer.jsonl', 'r') as file:
             with jsonlines.open(f'{args.data_file}/answer.jsonl') as file:
                 self.data = list(file)
-                
-        elif args.data_type =='hf' or args.data_type =='qa':
+        elif args.data_type =='img':
+            import jsonlines
+
+            # 打开并读取 JSON 文件
+            #with open(f'{args.data_file}/answer.jsonl', 'r') as file:
+            with jsonlines.open(f'{args.data_file}/answer.jsonl') as file:
+                self.data = list(file)
+        elif args.data_type =='hf' or args.data_type =='qa' or args.data_type =='cnqa':
             from datasets import load_dataset
             dataset = load_dataset(args.data_file, split="train")
             self.data = dataset
@@ -127,14 +139,6 @@ class WorldDataset(Dataset):
         else:
             self.data = pd.read_parquet(args.data_file)
 
-        # self.speech_encoder = SpeechEncoder(
-        #     '/home/rwkv/JL/audio',
-        #     args.n_embd,
-        #     downsample_K=5,
-        #     hidden_dim=2048,
-        #     train_mode="adapter",
-        #     device='cuda',
-        # )
         
 
     def setup(self, rank, world_size, devices, shuffle):
@@ -176,6 +180,11 @@ class WorldDataset(Dataset):
             sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
 
             token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        elif args.data_type =='cnqa':
+            sample = self.data[idx]
+            sign = sample['speech_cosy'][0]
+            data_answer = sample['answer']
+            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
         elif args.data_type == "jsonl":
             ctx_len = args.ctx_len
             req_len = ctx_len + 1
@@ -190,6 +199,14 @@ class WorldDataset(Dataset):
             mask = torch.zeros(req_len - 1)
             mask[:token_len - 1] = 1
             return x, y, mask
+        elif args.data_type == "img":
+
+            mod_name = self.data[idx]['file_name']
+            data_answer = self.data[idx]['answer']
+            mod_path = f'{args.data_file}/{mod_name}'
+            token = torch.tensor(pipeline.encode(f'\n\nAssistant: {data_answer}\x17'))
+            image = Image.open(mod_path).convert('RGB')
+            sign = transform(image)
         else:
             data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])
             data_answer = self.data['answer'][idx]

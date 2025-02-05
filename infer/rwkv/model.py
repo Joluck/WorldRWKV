@@ -265,7 +265,7 @@ class RWKV(MyModule):
         self.n_embd = args.n_embd
         self.n_layer = args.n_layer
 
-        #z['emb.weight'] = F.layer_norm(z['emb.weight'], (args.n_embd,), weight=z['blocks.0.ln0.weight'], bias=z['blocks.0.ln0.bias'])
+        # z['emb.weight'] = F.layer_norm(z['emb.weight'], (args.n_embd,), weight=z['blocks.0.ln0.weight'], bias=z['blocks.0.ln0.bias'])
         z['blocks.0.att.v0'] = z['blocks.0.att.a0'] # actually ignored
         z['blocks.0.att.v1'] = z['blocks.0.att.a1'] # actually ignored
         z['blocks.0.att.v2'] = z['blocks.0.att.a2'] # actually ignored
@@ -281,10 +281,13 @@ class RWKV(MyModule):
         x = self.z['emb.weight'][idx]
         if isinstance(sign, torch.Tensor):
             sign = sign.squeeze(0)
+            # sign = F.layer_norm(sign, (self.args.n_embd,), weight=self.z['blocks.0.ln0.weight'], bias=self.z['blocks.0.ln0.bias'])
+
             x = torch.cat((sign,x.to('cuda')), dim=0)
 
-
         x = F.layer_norm(x, (self.args.n_embd,), weight=self.z['blocks.0.ln0.weight'], bias=self.z['blocks.0.ln0.bias'])
+        # if isinstance(sign, torch.Tensor):
+        #     print(x)
 
         if type(idx) is list:
             if len(idx) > 1:

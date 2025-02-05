@@ -1,15 +1,17 @@
 from world.speech_encoder import SpeechEncoder
 from world.model import RWKV
-
+from world.visual_encoder import VisualEncoder
 def WorldLoading(args):
-    speech_encoder = SpeechEncoder(
+    modality = SpeechEncoder(
             args.load_moda,
             args.n_embd,
-            downsample_K=5,
-            hidden_dim=2048,
             device='cuda'
         )
-    model = RWKV(args, modality=speech_encoder)
+    # modality = VisualEncoder(
+    #     args.load_moda,
+    #     args.n_embd,
+    # )
+    model = RWKV(args, modality=modality)
     #model = RWKV(args)
     print(model)
 

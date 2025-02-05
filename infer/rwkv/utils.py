@@ -99,7 +99,7 @@ class PIPELINE():
             while len(tokens) > 0:
                 out, state = self.model.forward(tokens[:args.chunk_len], state, sign=sign)
                 tokens = tokens[args.chunk_len:]
-            sign =None
+            
             for n in args.token_ban:
                 out[n] = -float('inf')
             for n in occurrence:
@@ -107,6 +107,7 @@ class PIPELINE():
             
             # sampler
             token = self.sample_logits(out, temperature=args.temperature, top_p=args.top_p, top_k=args.top_k)
+            
             if token in args.token_stop:
                 break
             all_tokens += [token]
@@ -133,4 +134,16 @@ class PIPELINE():
                     callback(tmp)
                 out_str += tmp
                 out_last = i + 1
+            sign =None
+        print(out_str)
         return out_str
+    
+    def prefill(self, ctx, token_count=100, args=PIPELINE_ARGS(), callback=None, state=None, sign=None):
+        tokens = self.encode(ctx)
+        out, state = self.model.forward(tokens[:args.chunk_len], state, sign=sign,full_output=True)
+        max_indices = torch.argmax(out, dim=-1)
+        token = self.sample_logits(out[19,:], temperature=args.temperature, top_p=args.top_p, top_k=args.top_k)
+        print(token, self.decode([token]),out[19,:])
+        print(state[0].view(-1))
+        print(self.decode(max_indices.tolist()))
+        return self.decode(max_indices.tolist())

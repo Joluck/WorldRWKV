@@ -13,10 +13,10 @@ from infer.rwkv.model import RWKV # pip install rwkv
 from infer.rwkv.utils import PIPELINE, PIPELINE_ARGS
 
 from world.speech_encoder import SpeechEncoder
-
+from world.visual_encoder import VisualEncoder
 
 class Worldinfer():
-    def __init__(self, model_path, modality_path='/home/rwkv/JL/audio', strategy='cuda fp16'):
+    def __init__(self, model_path, modality_path='/home/rwkv/JL/audio', strategy='cuda bf16'):
 
         ss = strategy.split(' ')
         DEVICE = ss[0]
@@ -48,14 +48,20 @@ class Worldinfer():
                             token_stop = [24], # stop generation whenever you see any token here
                             chunk_len = 256) # split input into chunks to save VRAM (shorter -> slower)
         print('RWKV finish!!!')
-        self.modality = SpeechEncoder(
+        # self.modality = SpeechEncoder(
+        #     modality_path,
+        #     n_embd,
+        #     downsample_K=5,
+        #     hidden_dim=2048,
+        #     train_mode="adapter",
+        #     device='cuda',
+        # ).to('cuda', torch.bfloat16)
+
+        self.modality = VisualEncoder(
             modality_path,
             n_embd,
-            downsample_K=5,
-            hidden_dim=2048,
-            train_mode="adapter",
-            device='cuda',
-        ).to('cuda', torch.bfloat16)
+        )
+        self.modality.eval()
         
         self.modality.load_state_dict(modality_dict, strict=False)
 
@@ -70,22 +76,27 @@ class Worldinfer():
     def nlp_gen(self, ctx):
         result = self.pipeline.generate(ctx, token_count=500, args=self.args, callback=None, state=None)
         return result
+    
+    def prefill(self, ctx, audio):
+        y= self.modality(audio).to(self.DTYPE)
+        result = self.pipeline.prefill(ctx, token_count=500, args=self.args, callback=None, state=None, sign=y)
+        return result
 
 
-import librosa
-from datasets import load_dataset
+# import librosa
+# from datasets import load_dataset
 
-worldinfer = Worldinfer(model_path='/home/rwkv/JL/out_model/asr-step2ttt/rwkv-0')
+# worldinfer = Worldinfer(model_path='/home/rwkv/JL/out_model/asr-step2ttt/rwkv-0')
 
-dataset = load_dataset('/home/rwkv/JL/data/fixie-ai-librispeech_asr/clean')
-data = dataset['test']
-print(len(data))
+# dataset = load_dataset('/home/rwkv/JL/data/fixie-ai-librispeech_asr/clean')
+# data = dataset['test']
+# print(len(data))
 
-for idx in range(100):
-    sample = data[idx]
-    audio = sample['audio']
-    data_answer = sample['text'] #####caption
-    audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-    res = worldinfer.generate(audio)
-    print('ori:  ', data_answer)
-    print('res: ', res)
+# for idx in range(100):
+#     sample = data[idx]
+#     audio = sample['audio']
+#     data_answer = sample['text'] #####caption
+#     audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+#     res = worldinfer.generate(audio)
+#     print('ori:  ', data_answer)
+#     print('res: ', res)
