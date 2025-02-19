@@ -6,7 +6,6 @@ import lightning as pl
 from .rwkvLinear import LORA_CONFIG, BONE_CONFIG
 import re
 import numpy as np
-import streamlit as st
 import json
 
 def my_save(args, trainer, dd, ff):
@@ -43,6 +42,41 @@ def cosine_decay_with_final_lr(initial_lr, final_lr, current_step, total_steps):
         lr = final_lr + 0.5 * (initial_lr - final_lr) * (1 + math.cos(math.pi * current_step / total_steps))
     return lr
 
+def wsd(initial_lr, final_lr, current_step, total_steps, warmup_steps=100):
+    """
+    Compute the learning rate using cosine annealing with a warmup phase.
+
+    Warmup phase:
+        For the first warmup_steps, the learning rate increases linearly from 0 to initial_lr.
+    Cosine annealing phase:
+        From warmup_steps to total_steps, the learning rate decays from initial_lr to final_lr
+        following the cosine annealing schedule.
+
+    Args:
+        initial_lr (float): The target learning rate after warmup (also the starting learning rate for decay).
+        final_lr (float): The final learning rate after total_steps.
+        current_step (int): Current training step.
+        total_steps (int): Total number of training steps.
+        warmup_steps (int): Number of steps used for the warmup phase.
+
+    Returns:
+        float: The computed learning rate.
+    """
+    if current_step < warmup_steps:
+        # Warmup phase: linearly increase LR from 0 to initial_lr.
+        return initial_lr * current_step / max(1, warmup_steps)
+    else:
+        # Adjust step count for cosine annealing phase.
+        effective_step = current_step - warmup_steps
+        effective_total = total_steps - warmup_steps
+        
+        if effective_step >= effective_total:
+            return final_lr
+        
+        # Compute cosine annealing decay.
+        cosine_decay = 0.5 * (1 + math.cos(math.pi * effective_step / effective_total))
+        decayed_lr = final_lr + (initial_lr - final_lr) * cosine_decay
+        return decayed_lr
 class train_callback(pl.Callback):
     def __init__(self, args):
         super().__init__()
@@ -68,7 +102,8 @@ class train_callback(pl.Callback):
         if args.lr_final == args.lr_init or args.epoch_count == 0:
             lr = args.lr_init
         else:
-            lr = cosine_decay_with_final_lr(args.lr_init, args.lr_final, real_step, args.epoch_steps//int(args.devices))
+            # lr = cosine_decay_with_final_lr(args.lr_init, args.lr_final, real_step, args.epoch_steps//int(args.devices))
+            lr = wsd(args.lr_init, args.lr_final, real_step, args.epoch_steps//int(args.devices))
             # decay_step = real_step - args.my_pile_edecay * args.epoch_steps
             # decay_total = (args.epoch_count - args.my_pile_edecay) * args.epoch_steps
             # progress = (decay_step - w_step + 1) / (decay_total - w_step)

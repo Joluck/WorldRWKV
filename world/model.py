@@ -18,7 +18,6 @@ if importlib.util.find_spec('deepspeed'):
     
 from .block import Block
 from .loss import L2Wrap
-from .speech_encoder import SpeechEncoder
 
 from rwkv.utils import PIPELINE
 pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")

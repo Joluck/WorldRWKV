@@ -24,11 +24,29 @@ import io
 import soundfile as sf
 # 读取parquet文件
 from torchvision import transforms
+from transformers import CLIPVisionModel, CLIPImageProcessor, CLIPVisionConfig
+
+
 
 transform = transforms.Compose([
     transforms.Resize((512, 512)),
     transforms.ToTensor()  # 将图像转换为张量
 ])
+
+def process_conversation_text(conversations):
+    conversation_text = f"\x16"
+
+    for conv in conversations:
+        role = conv.get('from', '').lower()
+        content = conv.get('value', '')
+        
+        if role == 'human':
+            conversation_text += f"User: {content}\x17"
+        elif role in ['assistant', 'gpt']:
+            conversation_text += f"Assistant: {content}\x17"
+
+    return conversation_text
+
 def bytes_to_audio(audio_bytes):
     with io.BytesIO(audio_bytes) as buf:
         # 使用 soundfile 读取音频数据
@@ -121,6 +139,12 @@ class WorldDataset(Dataset):
             #with open(f'{args.data_file}/answer.jsonl', 'r') as file:
             with jsonlines.open(f'{args.data_file}/answer.jsonl') as file:
                 self.data = list(file)
+        elif args.data_type=='hf_img':
+            import jsonlines
+            # with open(f'{args.data_file}/chat.json', 'r', encoding='utf-8') as file:
+            #     self.data = json.load(file)          
+            with jsonlines.open(f'{args.data_file}/chat.jsonl') as file:
+                self.data = list(file)
         elif args.data_type =='hf' or args.data_type =='qa' or args.data_type =='cnqa':
             from datasets import load_dataset
             dataset = load_dataset(args.data_file, split="train")
@@ -207,6 +231,20 @@ class WorldDataset(Dataset):
             token = torch.tensor(pipeline.encode(f'\n\nAssistant: {data_answer}\x17'))
             image = Image.open(mod_path).convert('RGB')
             sign = transform(image)
+        elif args.data_type== 'hf_img':
+            
+            img_name = self.data[idx]['image']
+            conversation_text = self.data[idx]['conversations']
+            conversation_text = process_conversation_text(conversation_text)
+            # data_question = self.data[idx]['conversations'][0]['value']
+            # data_answer = self.data[idx]['conversations'][1]['value']
+            mod_path = f'{args.data_file}/images/{img_name}' 
+            token = torch.tensor(pipeline.encode(conversation_text)) 
+            image = Image.open(mod_path).convert('RGB')
+            sign = image
+        # elif args.data_type=='clip_img':
+        #     self.image_processor = CLIPImageProcessor.from_pretrained(self.vision_tower_name)    
+
         else:
             data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])
             data_answer = self.data['answer'][idx]
@@ -216,5 +254,3 @@ class WorldDataset(Dataset):
             token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
         #print(idx, f'Assistant: {data_answer}\x17')
         return sign, token
-    
-        

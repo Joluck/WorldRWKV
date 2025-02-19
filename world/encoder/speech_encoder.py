@@ -13,7 +13,7 @@ from transformers import Wav2Vec2CTCTokenizer
 class SpeechEncoder(nn.Module):
     def __init__(
         self,
-        model_id,
+        encoder_path,
         project_dim,
         downsample_K=5,
         hidden_dim=2048,
@@ -31,12 +31,12 @@ class SpeechEncoder(nn.Module):
         #     return_attention_mask=False,
         # )
         self.device = device
-        self.processor = AutoProcessor.from_pretrained(model_id, local_files_only=True)
+        self.processor = AutoProcessor.from_pretrained(encoder_path, local_files_only=True)
         self.time_reduction_factor = int(
             self.processor.feature_extractor.sampling_rate / 50
         )
         self.padding_length = 320
-        self.model = AutoModel.from_pretrained(model_id, local_files_only=True)
+        self.model = AutoModel.from_pretrained(encoder_path, local_files_only=True)
         self.model_output_dim = self.model.config.hidden_size
         self.downsample_K = downsample_K
         self.project_dim = project_dim

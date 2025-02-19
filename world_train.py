@@ -21,7 +21,6 @@ def rwkv_train():
     parser = ArgumentParser()
 
     parser.add_argument("--load_model", default="", type=str)  # full path, with .pth
-    parser.add_argument("--load_moda", default="", type=str)  # full path, with .pth
 
     parser.add_argument("--wandb", default="", type=str)  # wandb project name. if "" then don't use wandb
     parser.add_argument("--proj_dir", default="out", type=str)
@@ -132,7 +131,10 @@ def rwkv_train():
 
     parser.add_argument("--sft_field", default=None, type=str, nargs='+', help='List of fields for SFT')
     parser.add_argument("--sft_split", default="train", type=str)
-
+    
+    #World
+    parser.add_argument("--encoder_path", default="", type=str)  # full path, with .pth
+    parser.add_argument("--encoder_type", default="", type=str)  # full path, with .pth
     if pl.__version__[0]=='2':
         parser.add_argument("--accelerator", default="gpu", type=str)
         parser.add_argument("--strategy", default="auto", type=str)
@@ -268,32 +270,9 @@ def rwkv_train():
     from src.peft_loading import load_peft_model
     from world.model import RWKV
     from world.dataset import WorldDataset
-    from world.speech_encoder import SpeechEncoder
     from world.world_load import WorldLoading
 
     model = WorldLoading(args)
-
-    # speech_encoder = SpeechEncoder(
-    #         args.load_moda,
-    #         args.n_embd,
-    #         downsample_K=5,
-    #         hidden_dim=2048,
-    #         device='cuda'
-    #     )
-    # model = RWKV(args, modality=speech_encoder)
-    # #model = RWKV(args)
-    # print(model)
-    # print(args.train_step)
-
-    # if 'moda' not in args.train_step:
-    #     for param in model.modality.model.parameters():
-    #         param.requires_grad = False
-    # if 'adapter' not in args.train_step:
-    #     for param in model.modality.adapter.parameters():
-    #         param.requires_grad = False
-
-    # for name, param in model.named_parameters():
-    #     print(f"Parameter: {name}, Requires Grad: {param.requires_grad}")
 
 
     rank_zero_info(f"########## Loading {args.load_model}... ##########")

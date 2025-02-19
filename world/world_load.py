@@ -1,25 +1,22 @@
-from world.speech_encoder import SpeechEncoder
 from world.model import RWKV
-from world.visual_encoder import VisualEncoder
+from world.world_encoder import WorldEncoder
 def WorldLoading(args):
-    modality = SpeechEncoder(
-            args.load_moda,
-            args.n_embd,
-            device='cuda'
-        )
-    # modality = VisualEncoder(
-    #     args.load_moda,
-    #     args.n_embd,
-    # )
+    config = {
+        'encoder_type': args.encoder_type,
+        'encoder_path': args.encoder_path,
+        'project_dim' : args.n_embd
+        }
+    modality = WorldEncoder(**config)
+    
     model = RWKV(args, modality=modality)
     #model = RWKV(args)
     print(model)
 
     if 'moda' not in args.train_step:
-        for param in model.modality.model.parameters():
+        for param in model.modality.world_encoder.model.parameters():
             param.requires_grad = False
     if 'adapter' not in args.train_step:
-        for param in model.modality.adapter.parameters():
+        for param in model.modality.world_encoder.adapter.parameters():
             param.requires_grad = False
     if 'rwkv' not in args.train_step:
         for param in model.emb.parameters():

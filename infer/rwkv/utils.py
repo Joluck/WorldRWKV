@@ -135,7 +135,6 @@ class PIPELINE():
                 out_str += tmp
                 out_last = i + 1
             sign =None
-        print(out_str)
         return out_str
     
     def prefill(self, ctx, token_count=100, args=PIPELINE_ARGS(), callback=None, state=None, sign=None):

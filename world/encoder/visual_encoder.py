@@ -87,7 +87,12 @@ class VisualAdapter(nn.Module):
 
 
 class VisualEncoder(nn.Module):
-    def __init__(self, path, llm_dim,  input_dtype=torch.bfloat16) -> None:
+    def __init__(
+        self,
+        encoder_path,
+        project_dim,
+        train_mode="adapter",
+        device="cuda",) -> None:
         super(VisualEncoder, self).__init__()
 
         self.model = AutoencoderKL.from_pretrained(path, subfolder="vae", allow_pickle=False).to('cuda', input_dtype)
