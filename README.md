@@ -85,5 +85,4 @@ print(result)
 |:--------------:|:--------------:|:--------------:|:--------------:|
 |[**wavlm large**](https://huggingface.co/microsoft/wavlm-large) | RWKV7-0.4B | 2.51%(clean) | 9.68%(dev) |
 |            |            | 7.72%(other) | 10.21%(test) |
-|
-|
+
