@@ -8,18 +8,20 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 class SpeechAdapter(nn.Module):
     def __init__(self, input_dim, output_dim):
         super(SpeechAdapter, self).__init__()
-        self.downsample_K = 10
-        self.linear2linear = nn.Sequential(
-            nn.Linear(input_dim * self.downsample_K, 2048),
-            nn.ReLU(),
-            nn.Linear(2048, output_dim),
-        )
+        self.conv = nn.Conv1d(in_channels=input_dim, out_channels=3072, kernel_size=3, stride=2)
+        self.transformer = nn.TransformerEncoderLayer(d_model=3072, nhead=8, dim_feedforward=4096)
+        self.linear = nn.Linear(3072, output_dim)
     def forward(self, x):
-        if x.size(1)<5 or x.size(1)>5000:
-            return False
-        # reshape the output from [batch_size, num_frames, hidden_size] to [batch_size, num_frames//downsample_K, hidden_size*downsample_K]
-        x = x.unfold(1, self.downsample_K, self.downsample_K).flatten(2)
-        x = self.linear2linear (x)
+        # x shape: (batch_size, seq_len, input_dim)
+        x = x.permute(0, 2, 1)
+        # x shape: (batch_size, input_dim, seq_len)
+        x = self.conv(x)
+        # x shape after conv: (batch_size, input_dim, new_seq_len)
+        x = x.permute(2, 0, 1)  # Transformer expects (seq_len, batch_size, input_dim)
+        # x = self.transformer(x, src_key_padding_mask=mask.bool())
+        x = self.transformer(x)
+        x = x.permute(1, 0, 2)  # Back to (batch_size, seq_len, input_dim)
+        x = self.linear(x)
         return x
 
 
