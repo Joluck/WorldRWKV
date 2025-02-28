@@ -79,3 +79,11 @@ print(result)
 |             | RWKV7-1.5B     |             | 44.96       | 58.88       | 63.10       |
 |             | RWKV7-3B       |             |   51.09          |   60.75          |     70.93        |
 
+# 语音指标
+
+| **Encoder** | **LLM** | **LibriSpeech** | **Aishell-1** |
+|:--------------:|:--------------:|:--------------:|:--------------:|
+|[**wavlm large**](https://huggingface.co/microsoft/wavlm-large) | RWKV7-0.4B | 2.51%(clean) | 9.68%(dev) |
+|            |            | 7.72%(other) | 10.21%(test) |
+|
+|
