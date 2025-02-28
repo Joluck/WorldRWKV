@@ -25,10 +25,9 @@ def get_chunk(lst, n, k):
 
 # Custom dataset class
 class CustomDataset(Dataset):
-    def __init__(self, questions, image_folder, tokenizer):
+    def __init__(self, questions, image_folder):
         self.questions = questions
         self.image_folder = image_folder
-        self.tokenizer = tokenizer
 
     def __getitem__(self, index):
         line = self.questions[index]
@@ -48,7 +47,6 @@ class CustomDataset(Dataset):
 
         input_ids = f'\x16User: {qs}\x17Assistant:'
         # input_ids = f'\x16<|user|>:{qs}\x17<|assistant|>:'
-
         return input_ids, image
 
     def __len__(self):
@@ -61,24 +59,21 @@ def collate_fn(batch):
     image_tensors = list(image_tensors)
     return input_ids, image_tensors
 
-
 # DataLoader
-def create_data_loader(questions, image_folder, tokenizer, batch_size=1, num_workers=4):
+def create_data_loader(questions, image_folder, batch_size=1, num_workers=4):
     assert batch_size == 1, "batch_size must be 1"
-    dataset = CustomDataset(questions, image_folder, tokenizer)
+    dataset = CustomDataset(questions, image_folder)
     data_loader = DataLoader(dataset, batch_size=batch_size, num_workers=num_workers, shuffle=False, collate_fn=collate_fn)
     return data_loader
 
-# from infer.rwkv.rwkv_tokenizer import TRIE_TOKENIZER
 from infer.worldmodel import Worldinfer
+
 
 def eval_model(args):
     # Model
-    model_name = 'RWKV7'
+    model_name = 'RWKV-7'
     model_path = os.path.expanduser(args.model_path)
-    tokenizer = None #TRIE_TOKENIZER("infer/rwkv/rwkv_vocab_v20230424.txt")
     model = Worldinfer(model_path=args.model_path, encoder_type=args.type, encoder_path=args.conv_mode)
-
 
     questions = [json.loads(q) for q in open(os.path.expanduser(args.question_file), "r")]
     questions = get_chunk(questions, args.num_chunks, args.chunk_idx)
@@ -87,13 +82,16 @@ def eval_model(args):
     ans_file = open(answers_file, "w")
 
 
-    data_loader = create_data_loader(questions, args.image_folder, tokenizer)
+
+    data_loader = create_data_loader(questions, args.image_folder)
 
     for (text, image_tensor), line in tqdm(zip(data_loader, questions), total=len(questions)):
         idx = line["question_id"]
         cur_prompt = line["text"]
+
         with torch.inference_mode():
             output_ids = model.generate(text[0], image_tensor)
+
 
         outputs = output_ids[1:] #remove ' '
 
@@ -114,7 +112,7 @@ if __name__ == "__main__":
     parser.add_argument("--image-folder", type=str, default="")
     parser.add_argument("--question-file", type=str, default="tables/question.jsonl")
     parser.add_argument("--answers-file", type=str, default="answer.jsonl")
-    parser.add_argument("--conv_mode", type=str, default="")
+    parser.add_argument("--conv_mode", type=str, default="llava_v1")
     parser.add_argument("--type", type=str, default="clip")
 
     parser.add_argument("--num-chunks", type=int, default=1)

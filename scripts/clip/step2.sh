@@ -1,5 +1,5 @@
-load_model=/home/rwkvos/peter/out_model/rwkv7-3b-pretrain/rwkv-0.pth
-proj_dir=/home/rwkvos/JL/out_model/rwkv7-3b-visual
+load_model=/home/rwkvos/peter/out_model/rwkv7-3b-pretrain-clip-sp/rwkv-0.pth
+proj_dir=/home/rwkvos/JL/out_model/rwkv7-3b-clip-sp
 data_file=/home/rwkvos/data/hf-imgs/finetuning665
 
 n_layer=32

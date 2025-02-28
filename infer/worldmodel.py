@@ -47,7 +47,7 @@ class Worldinfer():
         self.pipeline = PIPELINE(model, "rwkv_vocab_v20230424")
 
 
-        self.args = PIPELINE_ARGS(temperature = 1.0, top_p = 0.4, top_k=0, # top_k = 0 then ignore
+        self.args = PIPELINE_ARGS(temperature = 1.0, top_p = 0.0, top_k=0, # top_k = 0 then ignore
                             alpha_frequency = 0.0,
                             alpha_presence = 0.0,
                             token_ban = [0], # ban the generation of some tokens
@@ -64,8 +64,11 @@ class Worldinfer():
         self.modality.load_checkpoint(modality_dict)
 
 
-    def generate(self, msg, modality):
-        y = self.modality(modality).to(self.DTYPE)
-        result = self.pipeline.generate(msg, token_count=500, args=self.args, callback=None, state=None, sign=y)
+    def generate(self, text, modality):
+        if modality!=None:
+            y = self.modality(modality).to(self.DTYPE)
+        else:
+            y=modality
+        result = self.pipeline.generate(text, token_count=500, args=self.args, callback=None, state=None, sign=y)
         return result
 

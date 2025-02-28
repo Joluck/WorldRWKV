@@ -14,8 +14,8 @@ import lightning as L
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 from lightning_utilities.core.rank_zero import rank_zero_info
-from rwkv.utils import PIPELINE
-pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")
+from infer.rwkv.utils import PIPELINE
+pipeline = PIPELINE('rwkv', "rwkv_vocab_v20230424")
 from PIL import Image
 
 import pandas as pd
@@ -153,8 +153,6 @@ class WorldDataset(Dataset):
             # print(dataset['train'][0])
             # self.data = dataset["ENGLISH"]
         elif args.data_type == "jsonl":
-            from rwkv.utils import PIPELINE
-            self.pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")
             import jsonlines
 
             with jsonlines.open(args.data_file) as file:
@@ -242,9 +240,7 @@ class WorldDataset(Dataset):
             token = torch.tensor(pipeline.encode(conversation_text)) 
             image = Image.open(mod_path).convert('RGB')
             sign = image
-        # elif args.data_type=='clip_img':
-        #     self.image_processor = CLIPImageProcessor.from_pretrained(self.vision_tower_name)    
-
+        
         else:
             data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])
             data_answer = self.data['answer'][idx]
