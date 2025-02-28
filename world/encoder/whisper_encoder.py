@@ -12,6 +12,9 @@ class SpeechAdapter(nn.Module):
         self.transformer = nn.TransformerEncoderLayer(d_model=3072, nhead=8, dim_feedforward=4096)
         self.linear = nn.Linear(3072, output_dim)
     def forward(self, x):
+        if x.size(1)<5 or x.size(1)>5000:
+            return False
+        
         # x shape: (batch_size, seq_len, input_dim)
         x = x.permute(0, 2, 1)
         # x shape: (batch_size, input_dim, seq_len)
