@@ -1,12 +1,12 @@
 load_model='/home/rwkv/JL/model/rwkv-x070-450m-world-v2.9-83%trained-20250101-ctx4k.pth'
-proj_dir='/home/rwkv/JL/out_model/asr-whisper-ttt'
-data_file='/home/rwkv/JL/data/fixie-ai-librispeech_asr/clean'
+proj_dir='/home/rwkv/JL/out_model/asr-whisper-new-cn'
+data_file=/home/rwkv/JL/audio-data/cnaudio
 n_layer=24
 n_embd=1024
 
 micro_bsz=16
 epoch_save=1
-epoch_steps=8284 #6171
+epoch_steps=4837 #8284 #6171
 ctx_len=1024
 
 encoder_path='/home/rwkv/model/whisper-small'
@@ -16,7 +16,7 @@ encoder_type='whisper'
 HF_ENDPOINT="https://hf-mirror.com" python world_train.py \
 --load_model $load_model \
 --proj_dir $proj_dir --data_file $data_file \
---data_type hf \
+--data_type cnasr \
 --vocab_size 65536 \
 --n_layer $n_layer --n_embd $n_embd \
 --ctx_len $ctx_len --micro_bsz $micro_bsz \
@@ -24,4 +24,4 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \
 --lr_init 1e-4 --lr_final 1e-4 --warmup_steps 0 --beta1 0.9 --beta2 0.99 --adam_eps 1e-8 \
 --accelerator gpu --devices 4 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
 --encoder_path $encoder_path --encoder_type $encoder_type \
---my_testing "x070" --train_step adapter rwkv --wandb world-asr
+--my_testing "x070" --train_step adapter --wandb world-asr

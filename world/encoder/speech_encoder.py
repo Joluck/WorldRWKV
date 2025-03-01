@@ -17,8 +17,8 @@ class SpeechAdapter(nn.Module):
         self.transformer = nn.TransformerEncoderLayer(d_model=3072, nhead=8, dim_feedforward=4096)
         self.linear = nn.Linear(3072, output_dim)
     def forward(self, x):
-        if x.size(1)<5 or x.size(1)>5000:
-            return False
+        # if x.size(1)<5 or x.size(1)>5000:
+        #     return False
         # x shape: (batch_size, seq_len, input_dim)
         x = x.permute(0, 2, 1)
         # x shape: (batch_size, input_dim, seq_len)
@@ -36,7 +36,7 @@ class SpeechAdapter(nn.Module):
 class SpeechEncoder(nn.Module):
     def __init__(
         self,
-        model_id,
+        encoder_path,
         project_dim,
         train_mode="adapter",
         device="cuda",
@@ -47,7 +47,7 @@ class SpeechEncoder(nn.Module):
         self.device = device
         
         try:
-            self.processor = AutoProcessor.from_pretrained(model_id)
+            self.processor = AutoProcessor.from_pretrained(encoder_path)
         except:
             self.processor = AutoProcessor.from_pretrained("facebook/hubert-large-ls960-ft")
         
@@ -56,7 +56,7 @@ class SpeechEncoder(nn.Module):
         )
         self.padding_length = 320
         
-        self.model = AutoModel.from_pretrained(model_id, cache_dir="../temp_models")
+        self.model = AutoModel.from_pretrained(encoder_path, cache_dir="../temp_models")
         self.model.eval()
         self.model_output_dim = self.model.config.hidden_size
         self.project_dim = project_dim

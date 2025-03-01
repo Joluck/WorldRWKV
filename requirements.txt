@@ -1,4 +1,5 @@
 torch
+torchvision
 bitsandbytes
 deepspeed
 einops
@@ -8,3 +9,7 @@ rwkv
 transformers
 lightning
 datasets
+Pillow
+librosa
+diffusers
+wandb

@@ -73,7 +73,8 @@ print(result)
 
 | **Encoder** | **LLM** | **VQAV2** | **TextVQA** | **GQA** | **ScienceQA** |
 |:--------------:|:--------------:|:--------------:|:--------------:|:--------------:|:--------------:|
-| [**Clip**](https://huggingface.co/openai/clip-vit-large-patch14-336)    | RWKV7-1.5B     | 72.31       | 40.27       | 54.56       |   62.77          |
+| [**Clip**](https://huggingface.co/openai/clip-vit-large-patch14-336)    | RWKV7-0.4B     | 62.04      | 31.72      | 49.32       |   51.10         |
+|| RWKV7-1.5B     | 72.31       | 40.27       | 54.56       |   62.77          |
 |             | RWKV7-3B       | 73.13       | 45.56       | 57.00       | 70.06       |
 | [**SigLIP2**](https://huggingface.co/google/siglip2-base-patch16-384) | RWKV7-0.4B     |    72.04     | 38.75       | 55.52       | 43.32       |
 |             | RWKV7-1.5B     |     76.95    | 44.96       | 58.88       | 63.10       |

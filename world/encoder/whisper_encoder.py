@@ -6,25 +6,30 @@ import numpy as np
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
 class SpeechAdapter(nn.Module):
-    def __init__(self, input_dim, output_dim):
+    def __init__(self, encoder_dim, project_dim, hidden_dim=None):
         super(SpeechAdapter, self).__init__()
-        self.conv = nn.Conv1d(in_channels=input_dim, out_channels=3072, kernel_size=3, stride=2)
-        self.transformer = nn.TransformerEncoderLayer(d_model=3072, nhead=8, dim_feedforward=4096)
-        self.linear = nn.Linear(3072, output_dim)
+        self.encoder_dim = encoder_dim
+        self.project_dim = project_dim
+        self.hidden_dim = hidden_dim
+
+        if self.hidden_dim==None:
+            self.hidden_dim = project_dim*2
+        self.conv = nn.Conv1d(in_channels=self.encoder_dim , out_channels=self.hidden_dim, kernel_size=3, stride=2)
+        self.proj = nn.Sequential(
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.project_dim),
+        )
     def forward(self, x):
-        if x.size(1)<5 or x.size(1)>5000:
-            return False
+        # if x.size(1)<5 or x.size(1)>5000:
+        #     return False
         
         # x shape: (batch_size, seq_len, input_dim)
         x = x.permute(0, 2, 1)
         # x shape: (batch_size, input_dim, seq_len)
-        x = self.conv(x)
+        x = self.conv(x).permute(0, 2, 1)
         # x shape after conv: (batch_size, input_dim, new_seq_len)
-        x = x.permute(2, 0, 1)  # Transformer expects (seq_len, batch_size, input_dim)
-        # x = self.transformer(x, src_key_padding_mask=mask.bool())
-        x = self.transformer(x)
-        x = x.permute(1, 0, 2)  # Back to (batch_size, seq_len, input_dim)
-        x = self.linear(x)
+        x = self.proj(x)
         return x
 
 

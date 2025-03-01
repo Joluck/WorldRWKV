@@ -24,7 +24,6 @@ import io
 import soundfile as sf
 # 读取parquet文件
 from torchvision import transforms
-from transformers import CLIPVisionModel, CLIPImageProcessor, CLIPVisionConfig
 
 
 
@@ -145,7 +144,7 @@ class WorldDataset(Dataset):
             #     self.data = json.load(file)          
             with jsonlines.open(f'{args.data_file}/chat.jsonl') as file:
                 self.data = list(file)
-        elif args.data_type =='hf' or args.data_type =='qa' or args.data_type =='cnqa':
+        elif args.data_type =='hf' or args.data_type =='qa' or args.data_type =='cnqa' or args.data_type =='cnasr':
             from datasets import load_dataset
             dataset = load_dataset(args.data_file, split="train")
             self.data = dataset
@@ -204,8 +203,15 @@ class WorldDataset(Dataset):
             token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
         elif args.data_type =='cnqa':
             sample = self.data[idx]
-            sign = sample['speech_cosy'][0]
+            audio = sample['audio']
             data_answer = sample['answer']
+            sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        elif args.data_type =='cnasr':
+            sample = self.data[idx]
+            audio = sample['audio']
+            data_answer = sample['transcript']
+            sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
             token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
         elif args.data_type == "jsonl":
             ctx_len = args.ctx_len
