@@ -22,7 +22,7 @@ from infer.rwkv.utils import PIPELINE, PIPELINE_ARGS
 from world.world_encoder import WorldEncoder
 
 class Worldinfer():
-    def __init__(self, model_path, encoder_type, encoder_path, strategy='cuda bf16'):
+    def __init__(self, model_path, encoder_type, encoder_path, strategy='cuda bf16', args=None):
 
         ss = strategy.split(' ')
         DEVICE = ss[0]
@@ -46,13 +46,13 @@ class Worldinfer():
         model = RWKV(model=self.model_weight, strategy=strategy)
         self.pipeline = PIPELINE(model, "rwkv_vocab_v20230424")
 
-
-        self.args = PIPELINE_ARGS(temperature = 1.0, top_p = 0.0, top_k=0, # top_k = 0 then ignore
-                            alpha_frequency = 0.0,
-                            alpha_presence = 0.0,
-                            token_ban = [0], # ban the generation of some tokens
-                            token_stop = [24], # stop generation whenever you see any token here
-                            chunk_len = 256) # split input into chunks to save VRAM (shorter -> slower)
+        if args==None:
+            self.args = PIPELINE_ARGS(temperature = 1.0, top_p = 0.0, top_k=0, # top_k = 0 then ignore
+                                alpha_frequency = 0.0,
+                                alpha_presence = 0.0,
+                                token_ban = [0], # ban the generation of some tokens
+                                token_stop = [24], # stop generation whenever you see any token here
+                                chunk_len = 256) # split input into chunks to save VRAM (shorter -> slower)
         print('RWKV finish!!!')
 
         config = {

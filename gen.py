@@ -1,10 +1,18 @@
-# from infer.worldmodel import Worldinfer
+from infer.worldmodel import Worldinfer
+from PIL import Image
 
 
-# model = Worldinfer(model_path=xxxx, encoder_type='xxx', encoder_path=xxxx)
+llm_path='/home/rwkv/model/rwkv7-3b-siglip/rwkv-0'
+encoder_path='/home/rwkv/model/siglip2basep16s384'
+encoder_type='siglip'
 
-import torch
-from infer.rwkv.utils import PIPELINE
-pipeline = PIPELINE('rwkv', "rwkv_vocab_v20230424")
-token = torch.tensor(pipeline.encode(f'<|xxx|>\n\n<|user|>\n\n<|assistant|>:\x17'))
-print(token)
+model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=encoder_path)
+
+img_path = './docs/03-Confusing-Pictures.jpg'
+image = Image.open(img_path).convert('RGB')
+
+text = '\x16User: What is unusual about this image?\x17Assistant:'
+
+result = model.generate(text, image)
+
+print(result)

@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-from transformers import AutoProcessor, AutoModel
 from diffusers import AutoencoderKL
 
 

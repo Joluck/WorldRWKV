@@ -1,6 +1,6 @@
 
 <h1 align="center">
-  <p>WorldRWKV</p>
+  <p>WorldRWKV: Exploring RWKV7’s Understanding Capabilities of Any Modality in the World</p>
 </h1>
 
 \[ English | [中文](README_zh.md) \]
@@ -48,13 +48,22 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \   # 中国用户使�
 # 推理
 ```
 from infer.worldmodel import Worldinfer
+from PIL import Image
 
-assert encoder_type in [clip, whisper, siglip, speech, visual]
 
-model = Worldinfer(model_path=xxxx, encoder_type='xxx', encoder_path=xxxx)
-text = ''
-mod = image/audio
-result = model.generate(text, mod)
+llm_path='/home/rwkv/model/rwkv7-3b-siglip/rwkv-0'
+encoder_path='/home/rwkv/model/siglip2basep16s384'
+encoder_type='siglip' #[clip, whisper, siglip, speech]
+
+model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=encoder_path)
+
+img_path = './docs/03-Confusing-Pictures.jpg'
+image = Image.open(img_path).convert('RGB')
+
+text = '\x16User: What is unusual about this image?\x17Assistant:'
+
+result = model.generate(text, image)
+
 print(result)
 ```
 # 功能

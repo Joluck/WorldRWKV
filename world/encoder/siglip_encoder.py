@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
 
-from transformers import AutoProcessor, AutoModel, SiglipImageProcessor
+from transformers import AutoModel, SiglipImageProcessor
 
 class VisualAdapter(nn.Module):
     """

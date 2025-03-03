@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from world.encoder.speech_encoder import SpeechEncoder
-from world.encoder.visual_encoder import VisualEncoder
+# from world.encoder.visual_encoder import VisualEncoder
 from world.encoder.whisper_encoder import WhisperEncoder
 from world.encoder.clip_encoder import ClipEncoder
 from world.encoder.siglip_encoder import SiglipEncoder
@@ -17,7 +17,7 @@ class WorldEncoder(nn.Module):
         encoder_map = {
             "clip": ClipEncoder,
             "whisper": WhisperEncoder,
-            "visual": VisualEncoder,
+            # "visual": VisualEncoder,
             "speech": SpeechEncoder,
             "siglip": SiglipEncoder
         }
