@@ -9,21 +9,22 @@ encoder_type = 'siglip'
 
 # 全局变量存储当前上传的图片和模型状态
 current_image = None
-current_state = None  # 存储模型状态
-is_first_question = True  # 标记是否是对当前图片的第一个问题
-
+current_state = None 
+first_question = False # 存储模型状态
+# 是否是第一轮对话
 # 初始化模型
 model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=encoder_path)
 
 # 处理用户输入的核心逻辑
 def chat_fn(user_input, chat_history, image=None):
-    global current_image, current_state, is_first_question
+    
+    global current_image, current_state,first_question
+    # print('2222222222222',first_question)
     
     # 如果上传了新图片，更新当前图片并重置状态
     if image is not None:
         current_image = image
-        current_state = None  # 新图片需要重置状态
-        is_first_question = True  # 重置为第一个问题
+        # current_state = None  # 新图片需要重置状态
     
     # 如果没有图片，提示用户上传
     if current_image is None:
@@ -31,8 +32,9 @@ def chat_fn(user_input, chat_history, image=None):
         chat_history.append((user_input, bot_response))
         return "", chat_history
     
-    # 确保图片是PIL Image格式（只在第一次问题时需要）
-    if is_first_question and not isinstance(current_image, Image.Image):
+    
+    # 确保图片是PIL Image格式
+    if not isinstance(current_image, Image.Image) and current_image!='none':
         current_image = Image.fromarray(current_image)
     
     # 构造提示文本
@@ -40,24 +42,34 @@ def chat_fn(user_input, chat_history, image=None):
     
     # 生成结果，传入当前状态
     try:
-        # 第一个问题传入图片，后续问题不传
-        if is_first_question:
-            print('00000000000000000000000')
-            # 第一个问题，传入图片
-            result, state = model.generate(prompt, current_image, state=current_state)
-            is_first_question = False  # 更新标记，后续问题不再传图片
+        # 检查是否是第一轮对话
+        
+        
+        if first_question:
+            # print('333333333',first_question)
+            print(current_image)
+            result,state = model.generate(prompt, current_image,state=None)
         else:
-            print('11111111111111111111111')
-            result, state = model.generate(prompt, None, state=current_state)
+            # print('44444',first_question)
+            print(current_image)
+            
+            result,state = model.generate(prompt, 'none', state=current_state)
+            
+       
+
+        # result,state = model.generate(prompt, current_image, state=current_state)
+
         
-        # 更新状态
-        current_state = state
-        bot_response = result
+      
         
+        first_question = False
+        bot_response, current_state = result,state
+        # current_image='none'
+        # print('current_state1=',current_state)
+      
     except Exception as e:
         bot_response = f"生成回复时出错: {str(e)}"
         current_state = None  # 出错时重置状态
-        is_first_question = True  # 出错时重置为第一个问题
     
     # 更新对话历史
     chat_history.append((user_input, bot_response))
@@ -67,27 +79,26 @@ def chat_fn(user_input, chat_history, image=None):
 
 # 处理图片上传
 def update_image(image):
-    global current_image, current_state, is_first_question
+    global current_image, current_state,first_question
     current_image = image
-    current_state = None  # 上传新图片时重置状态
-    is_first_question = True  # 重置为第一个问题
+    current_state = None 
+    first_question = True
+    # print('1111111111111111111',first_question) # 上传新图片时重置状态
     return "图片已上传成功！可以开始提问了。"
 
 # 清空图片
 def clear_image():
-    global current_image, current_state, is_first_question
+    global current_image, current_state
     current_image = None
     current_state = None  # 清空图片时重置状态
-    is_first_question = True  # 重置为第一个问题
     # 返回None给image组件，文本给status组件
     return None, "图片已清除，请上传新图片。"
 
 # 清空历史和图片
 def clear_all():
-    global current_image, current_state, is_first_question
+    global current_image, current_state
     current_image = None
     current_state = None  # 清空所有时重置状态
-    is_first_question = True  # 重置为第一个问题
     return [], "", "图片和对话已清空，请重新上传图片。"
 
 # 不使用图片输入的聊天函数
@@ -95,8 +106,8 @@ def chat_without_image_update(user_input, chat_history):
     return chat_fn(user_input, chat_history)
 
 # 界面布局组件
-with gr.Blocks(title="图像多轮对话系统", theme=gr.themes.Soft()) as demo:
-    gr.Markdown("# 图像多轮对话系统")
+with gr.Blocks(title="WORLD RWKV", theme=gr.themes.Soft()) as demo:
+    gr.Markdown("# WORLD RWKV")
     gr.Markdown("上传一张图片，然后可以进行多轮提问")
     
     with gr.Row():

@@ -1,12 +1,8 @@
 
 import numpy as np
-from datasets import load_dataset
-import jsonlines
-from transformers import CLIPProcessor, CLIPModel
 
 import os, sys, torch, time
 import numpy as np
-from transformers import AutoModelForCausalLM, AutoTokenizer
 np.set_printoptions(precision=4, suppress=True, linewidth=200)
 import torch
 print(torch.__version__)
