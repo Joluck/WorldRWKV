@@ -131,6 +131,9 @@ def rwkv_train():
 
     parser.add_argument("--sft_field", default=None, type=str, nargs='+', help='List of fields for SFT')
     parser.add_argument("--sft_split", default="train", type=str)
+
+    parser.add_argument("--lr_schedule", default="cos", type=str)        #['cos', 'wsd']
+
     
     #World
     parser.add_argument("--encoder_path", default="", type=str)  # full path, with .pth

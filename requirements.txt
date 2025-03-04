@@ -13,3 +13,6 @@ Pillow
 librosa
 diffusers
 wandb
+jsonlines
+numpy
+gradio

@@ -135,7 +135,7 @@ class PIPELINE():
                 out_str += tmp
                 out_last = i + 1
             sign =None
-        return out_str
+        return out_str, state
     
     def prefill(self, ctx, token_count=100, args=PIPELINE_ARGS(), callback=None, state=None, sign=None):
         tokens = self.encode(ctx)

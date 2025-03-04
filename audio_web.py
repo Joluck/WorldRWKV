@@ -1,12 +1,16 @@
 import gradio as gr
 import os
 from datetime import datetime
-from gen import Worldinfer
 import librosa
 import numpy as np
 
-worldinfer = Worldinfer(model_path='/home/rwkv/JL/out_model/cnqa-0.5b-whisper/rwkv-0')
+from infer.worldmodel import Worldinfer
 
+llm_path='/home/rwkv/JL/out_model/wavlm-mlp-0.1b-2/rwkv-0'
+encoder_path='/home/rwkv/JL/audio'
+encoder_type='speech'
+
+model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=encoder_path)
 def save_audio(audio):
     # 检查 audio 是否为 None
     if audio is None:
@@ -22,7 +26,8 @@ def save_audio(audio):
 
     # 重采样到 16000 Hz
     resampled_audio = librosa.resample(audio_data, orig_sr=sample_rate, target_sr=16000)
-    res = worldinfer.generate(resampled_audio)
+    text = '\x16Assistant:'
+    res,_ = model.generate(text, resampled_audio)
     return res
 
 iface = gr.Interface(
@@ -30,8 +35,8 @@ iface = gr.Interface(
     inputs=gr.Audio( type="numpy"),  # 录音输入
     outputs="text",  # 输出结果
     live=True,  # 实时处理
-    title="Gradio 录音示例",
+    title="WorldRWKV",
     description="点击录音按钮开始录音，录音结束后会自动保存。"
 )
 
-iface.launch()
+iface.launch(server_name="0.0.0.0")

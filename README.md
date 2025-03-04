@@ -7,9 +7,13 @@
 # 简介
 # 环境
 ```
+git clone https://github.com/JL-er/WorldRWKV.git
+cd WorldRWKV
+```
+```
 conda create -n world python=3.12
 conda activate world
-pip install -r requirements.txt
+pip install -r requirements.txt #中国用户添加-i https://pypi.tuna.tsinghua.edu.cn/simple
 # 推荐 torch=>2.4.0
 ```
 # 训练

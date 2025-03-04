@@ -64,11 +64,11 @@ class Worldinfer():
         self.modality.load_checkpoint(modality_dict)
 
 
-    def generate(self, text, modality):
-        if modality!=None:
-            y = self.modality(modality).to(self.DTYPE)
+    def generate(self, text, modality='none', state=None):
+        if isinstance(modality, str):
+            y=None
         else:
-            y=modality
-        result = self.pipeline.generate(text, token_count=500, args=self.args, callback=None, state=None, sign=y)
-        return result
+            y = self.modality(modality).to(self.DTYPE)
+        result, state = self.pipeline.generate(text, token_count=500, args=self.args, callback=None, state=state, sign=y)
+        return result, state
 

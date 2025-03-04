@@ -13,6 +13,6 @@ image = Image.open(img_path).convert('RGB')
 
 text = '\x16User: What is unusual about this image?\x17Assistant:'
 
-result = model.generate(text, image)
+result,_ = model.generate(text, image)
 
 print(result)

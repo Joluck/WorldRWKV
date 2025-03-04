@@ -38,7 +38,7 @@ class SpeechAdapter(nn.Module):
 
         if self.hidden_dim==None:
             self.hidden_dim = project_dim*2
-        self.conv = nn.Conv1d(in_channels=self.encoder_dim , out_channels=self.hidden_dim, kernel_size=3, stride=2)
+        self.conv = nn.Conv1d(in_channels=self.encoder_dim , out_channels=self.hidden_dim, kernel_size=3, stride=2, padding=2)
         self.proj = nn.Sequential(
             nn.Linear(self.hidden_dim, self.hidden_dim),
             nn.ReLU(),
@@ -54,6 +54,8 @@ class SpeechAdapter(nn.Module):
         x = self.conv(x).permute(0, 2, 1)
         # x shape after conv: (batch_size, input_dim, new_seq_len)
         x = self.proj(x)
+        if x.size(1)>1023:
+            return False
         return x
 
 class SpeechEncoder(nn.Module):
