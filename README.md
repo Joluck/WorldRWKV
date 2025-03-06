@@ -97,6 +97,8 @@ print(result)
 
 | **Encoder** | **LLM** | **LibriSpeech** | **Aishell-1** |
 |:--------------:|:--------------:|:--------------:|:--------------:|
-|[**wavlm large**](https://huggingface.co/microsoft/wavlm-large) | RWKV7-0.4B | 2.51%(clean) | 9.68%(dev) |
-|            |            | 7.72%(other) | 10.21%(test) |
+|[**wavlm large**](https://huggingface.co/microsoft/wavlm-large) | RWKV7-0.4B | 2.43%(clean) | 9.68%(dev) |
+|            |            | 6.51%(other) | 10.33%(test) |
+|[**wavlm base+**](https://huggingface.co/microsoft/wavlm-base-plus) | RWKV7-0.4B | 3.08%(clean) | 12.40%(dev) |
+|            |            | 10.38%(other) | 13.46%(test) |
 
