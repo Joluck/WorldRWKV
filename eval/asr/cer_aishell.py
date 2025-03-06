@@ -11,10 +11,9 @@ model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=
 # dataset = load_dataset('/home/rwkv/JL/data/fixie-ai-librispeech_asr/clean')
 # data = load_dataset("JerryAGENDD/chinese_speech_cosy_audio", cache_dir = "../temp_datasets")['train']
 
-data = load_dataset("/home/rwkv/JL/data/fixie-ai-librispeech_asr",'clean')['test'].shuffle()
- 
-# data = dataset = load_dataset("carlot/AIShell", cache_dir = "temp_datasets")['validation']
+# data = load_dataset("fixie-ai/librispeech_asr",'clean')['test'].shuffle()
 
+data = dataset = load_dataset("carlot/AIShell")['test']
 print(len(data))
 
 # 初始化WER计算的变量
@@ -30,8 +29,8 @@ with tqdm(total=len(data), desc="Processing", unit="sample") as pbar:
     for idx in range(len(data)):
         sample = data[idx]
         audio = sample['audio']
-        data_answer = sample['text'].lower()
-        # data_answer = sample['transcript'].replace(" ","")
+        #data_answer = sample['text'].lower()
+        data_answer = sample['transcript'].replace(" ","")
         audio = librosa.resample(audio['array'], orig_sr=audio['sampling_rate'], target_sr=16000)
         
         # zeros = np.zeros(1600)
@@ -53,4 +52,4 @@ with tqdm(total=len(data), desc="Processing", unit="sample") as pbar:
 # final_wer = wer(reference_texts, generated_texts)
 final_wer = cer(reference_texts, generated_texts)
 # 打印最终的总WER
-print(f"最终的总CER: {final_wer:.4f}")
+print(f"CER: {final_wer:.4f}")
