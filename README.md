@@ -6,7 +6,13 @@
 
 \[ English | [中文](README_zh.md) \]
 ## Introduction
-We aim to process information from all modalities using pure RWKV7 architecture. In future, we believe that WorldRWKV will achieve end-to-end cross-modal inference. By aligning representations of different modalities into one unified space, WorldRWKV could understand physical rules in reality; thus achieving World Model. This project is still in starting phase. Please join us to build this Repo.
+Our goal is to implement training and inference in any modality using pure RWKV7 architecture. Currently, we can switch modalities freely using different encoders. In the future, we aim to achieve end-to-end cross-modal inference and explore the prototype of  World Model with RWKV7. The project is still in its early stages, with many areas requiring further optimization. We welcome you to join us on this journey.
+
+
+
+
+
+
 
 - Model Download：[HFModel](https://huggingface.co/WorldRWKV).  
 - Demos：[Demo](https://shoumenchougou.github.io/testforvideo/)
