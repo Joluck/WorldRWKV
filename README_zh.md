@@ -5,7 +5,7 @@
 
 \[ English | [中文](README_zh.md) \]
 # 简介
-实现纯RWKV7任意模态训练推理，未来逐步实现端到端训练推理并构建World Model雏形。
+我们的目标是用纯RWKV7架构实现任意模态训练推理，未来逐步实现端到端的跨模态推理。在不久的将来，WorldRWKV将能够在一个统一的空间中学习多个不同模态的表征；以此来理解现实世界中的物理规则。依此构建World Model雏形。目前项目处于出去阶段，仍然有很多地方需要优化，欢迎加入我们。
 - 模型下载：[HFModel](https://huggingface.co/WorldRWKV).  
 - 演示地址：[Demo](https://shoumenchougou.github.io/testforvideo/)
 - 加入我们：[Discord](https://discord.com/invite/bDSBUMeFpc) QQ: 1015471226
