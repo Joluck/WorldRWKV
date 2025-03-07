@@ -6,7 +6,11 @@
 
 \[ English | [中文](README_zh.md) \]
 ## Introduction
-Implementing arbitrary modality input/output using native RWKV7 architecture; advancing toward building a World Model
+WORLDRWKV: A Paradigm-Shifting Architecture for Universal Signal Processing
+RWKV represents a groundbreaking advancement in AI architecture, demonstrating unparalleled capability in processing and interpreting the full spectrum of real-world signals. Currently, we have successfully validated RWKV’s state-of-the-art performance in multimodal domains, including visual and auditory information processing. Building on this foundation, our roadmap includes pioneering exploration of RWKV’s ability to model more complicated signals, such as neural oscillations (brainwaves), as well as its transformative potential for cross-modal integration. We believe that WORLDRWKV will achieve end-to-end cross-modal inference soon.
+Through continuous integration of multimodal signals into RWKV’s latent space, we progress toward true world models—AI systems that internalize physics through first principles rather than mere pattern recognition. RWKV’s linear attention mechanism and recurrent structure provide the mathematical foundation for this synthesis, offering unprecedented efficiency in discovering universal laws across sensory domains.
+
+Our framework implements a plug-and-play paradigm for multimodal AI, enabling seamless integration of diverse signal encoders (vision, audio, etc.) into RWKV’s latent representation space. Our team wil keep working on the enhancing accessibility while expanding encoder library for more modalities.
 
 ## Release
 - [3/7] 🔥 Release Repo **WorldRWKV: Exploring RWKV7’s Understanding Capabilities of Any Modality in the World**. Tech report and training details will be release next week at [HFModel](https://huggingface.co/WorldRWKV).
