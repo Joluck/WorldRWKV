@@ -1,183 +1,132 @@
+
 <h1 align="center">
-  <p><img src="assert/logo.jpg" alt="RWKV-PEFT" width="60px"  style="vertical-align: middle; margin-right: 10px;"/>RWKV-PEFT</p>
+  <p>WorldRWKV: Exploring RWKV7’s Understanding Capabilities of Any Modality in the World</p>
 </h1>
 
-\[ [English](README.md) | [中文] \]
+\[ English | [中文](README_zh.md) \]
+# 简介
+实现纯RWKV7任意模态训练推理，未来逐步实现端到端训练推理并构建World Model雏形。
+- 模型下载：[HFModel](https://huggingface.co/WorldRWKV).  
+- 演示地址：[Demo](https://shoumenchougou.github.io/testforvideo/)
+- 加入我们：[Discord](https://discord.com/invite/bDSBUMeFpc) QQ: 1015471226
 
-RWKV-PEFT 是一个旨在为 RWKV5/6 模型实现高效参数微调的官方实现，支持在多种硬件上实现多种先进的微调方法。
+## 发布
+- [3/7] 🔥 发布仓库 **WorldRWKV: Exploring RWKV7’s Understanding Capabilities of Any Modality in the World**. 训练细节以及相关论文将在下周发布 [HFModel](https://huggingface.co/WorldRWKV).
 
-# 最近更新
-## 支持 v7
-``` --my_testing "x070" ```
-## SFT训练
-相关参数,详细使用参考scripts/run_sft.sh  
---data_file 'meta-math/MetaMathQA' 可直接选择huggingface路径，也可选择自己的json路径  
---data_type sft 选择数据类型  
---sft_field query response 根据json中问答格式进行检索  
---sft_split "train" 设置加载数据数量"train"全部加载，"train[:1000]"只加载1000条数据  
+# 环境
+- 克隆仓库并进入文件
 ```
---data_type sft --sft_field query response --sft_split "train"
+git clone https://github.com/JL-er/WorldRWKV.git
+cd WorldRWKV
 ```
-### SFT具体设置
-#### RWKV-PEFT/src/rwkv_datasets/SFTdataset.py
+- 依赖
 ```
-tokenizer_path = 'RWKV/rwkv-5-world-3b' #选择分词器（选择官方分词器）
-IGNORE_INDEX = -100 #填充（请勿修改）
-EOT_TOKEN = "<|EOT|>" #设置你需要的停止符
-
-# 根据需求修改对应的prompt
-PROMPT = (
-        "Below is an instruction that describes a task. "
-        "Write a response that appropriately completes the request.\n\n"
-        "### Instruction:\n{instruction}\n\n### Response:"
-    )
-```
-> [!TIP]
-> 中国网络下载huggingface数据会超时，所以你需要添加:HF_ENDPOINT="https://hf-mirror.com"  
->```HF_ENDPOINT="https://hf-mirror.com" sh scripts/run_sft.sh```
-
-## Bone: Block-Affine Adaptation of Large Language Models [Paper](https://arxiv.org/pdf/2409.15371)
-论文更新，现在Bone是一个简单高效基础PEFT方法，比LoRA更快更省显存，比PiSSA收敛更快表现更好。同时将旧版本的Bone更改为了Bat方法  
-```bone_config='{"bone_load":"","bone_r":64}'```更新为``` bone_config='{"bone_mode":"bone","bone_load":"","bone_r":64}' ``` or``` bone_config='{"bone_mode":"bat","bone_load":"","bone_r":64}' ```
-
-# Installation
-
-> [!IMPORTANT]
-> 不可跳过
-
-```bash
-git clone https://github.com/JL-er/RWKV-PEFT.git
-cd RWKV-PEFT
-pip install -r requirements.txt
+conda create -n world python=3.12
+conda activate world
+pip install -r requirements.txt #中国用户添加-i https://pypi.tuna.tsinghua.edu.cn/simple
+# 推荐 torch=>2.4.0
 ```
 
-## Web Run
-> [!TIP]
-> 如果你想使用云服务器运行streamlit (如 [Vast](https://vast.ai/) or [AutoDL](https://www.autodl.com/)), 你需要查看云服务器平台教程进行配置
+# 推理
+> [!NOTE]
+> 请确保encoder model和encoder_type匹配. 更多细节在:world/world_encoder.py
+```
+from infer.worldmodel import Worldinfer
+from PIL import Image
 
-```bash
-gradio web/app.py
+
+llm_path='/home/rwkv/model/rwkv7-3b-siglip/rwkv-0'
+encoder_path='/home/rwkv/model/siglip2basep16s384'
+encoder_type='siglip' #[clip, whisper, siglip, speech]
+
+model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=encoder_path)
+
+img_path = './docs/03-Confusing-Pictures.jpg'
+image = Image.open(img_path).convert('RGB')
+
+text = '\x16User: What is unusual about this image?\x17Assistant:'
+
+result = model.generate(text, image)
+
+print(result)
+```
+## Web-demo (Using Gradio)
+```
+python audio_multiturns_web.py # For Audio QA and ASR
+ 
+python visual_web.py  # For Visual QA 
+
 ```
 
-## 目录
-- [硬件需求](#硬件需求)
-- [快速开始](#快速开始)
-- [主要特性](#主要特性)
-- [详细配置说明](#详细配置说明)
-- [GPU支持情况](#gpu支持情况)
-- [引用](#引用)
+# 训练
+> [!NOTE]
+> 请确保encoder model和encoder_type匹配，以及训练任务与data_type匹配。你也可以在world/world_encoder.py中注册自己的encoder类
+```
+load_model=/home/rwkvos/model/rwkv/RWKV-x070-World-2.9B-v3-20250211-ctx4096.pth
+proj_dir=/home/rwkvos/peter/out_model/rwkv7-3b-pretrain-siglip
+data_file=/home/rwkvos/data/hf-imgs/pretrain595
 
-## 硬件需求
+n_layer=32
+n_embd=2560
 
-以下是使用 RTX 4090 (24GB显存) + 64GB内存时的显存占用情况（参数配置：`--strategy deepspeed_stage_1 --ctx_len 1024 --micro_bsz 1 --lora_r 64`）：
+encoder_path="google/siglip2-base-patch16-384" #选择你需要的encoder
+encoder_type=siglip #在worldencoder中注册类型
+data_type=hf_img #数据类型
 
-|   模型规模   | 全量微调 | LoRA/PISSA | QLoRA/QPISSA | State Tuning |
-|-------------|----------|------------|--------------|--------------|
-| RWKV6-1.6B  | 显存溢出   | 7.4GB      | 5.6GB        | 6.4GB        |
-| RWKV6-3B    | 显存溢出   | 12.1GB     | 8.2GB        | 9.4GB        |
-| RWKV6-7B    | 显存溢出   | 23.7GB*    | 14.9GB**     | 18.1GB       |
+micro_bsz=32
+epoch_save=1
+epoch_steps=18605 
+ctx_len=2048
 
-注：
-* 批次大小为8时会显存溢出
-* 批次大小为8时需要19.5GB显存
 
-## 快速开始
-
-1. 安装依赖：
-```bash
-pip install -r requirements.txt
+HF_ENDPOINT="https://hf-mirror.com" python world_train.py \   # 中国用户使用"https://hf-mirror.com"下载模型
+--load_model $load_model \
+--proj_dir $proj_dir --data_file $data_file \
+--data_type $data_type \
+--vocab_size 65536 \
+--n_layer $n_layer --n_embd $n_embd \
+--ctx_len $ctx_len --micro_bsz $micro_bsz \
+--epoch_steps $epoch_steps --epoch_count 1 --epoch_begin 0 --epoch_save $epoch_save \
+--lr_init 1e-3 --lr_final 0 --warmup_steps 0 --beta1 0.9 --beta2 0.99 --adam_eps 1e-8 \
+--accelerator gpu --devices 8 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
+--encoder_path $encoder_path --encoder_type $encoder_type \
+--my_testing "x070" --train_step adapter rwkv #train_step 选择你要训练的部分，encoder、adapter、rwkv
 ```
 
-2. 运行示例脚本：
-```bash
-sh scripts/run_lora.sh
-```
-注：具体数据准备方法请参考RWKV官方教程
+# 功能
+### WorldRWKV已实现的功能以及后续添加的功能
+| Function      | Work |
+|:--------------:|:-----------:|
+| asr            | ✅          |
+| speech to text | ✅          |
+| visual to text | ✅          |
+| text to speech | ❌          |
+| text to visual | ❌          |
+|speech to speech| ❌          |
 
-3. 使用 web gui 开始：
-> [!TIP]
-> 如果您使用云服务 (such as [Vast](https://vast.ai/) or [AutoDL](https://www.autodl.com/)), 您需要参考相关服务商的提示，开启网页端口业务。
 
-```bash
-streamlit run web/app.py
-```
+# 视觉指标
 
-## 主要特性
+| **Encoder** | **LLM** | **VQAV2** | **TextVQA** | **GQA** | **ScienceQA** |
+|:--------------:|:--------------:|:--------------:|:--------------:|:--------------:|:--------------:|
+| [**Clip**](https://huggingface.co/openai/clip-vit-large-patch14-336)    | RWKV7-0.4B     | 62.04      | 31.72      | 49.32       |   51.10         |
+|| RWKV7-1.5B     | 72.31       | 40.27       | 54.56       |   62.77          |
+|             | RWKV7-3B       | 73.13       | 45.56       | 57.00       | 70.06       |
+| [**SigLIP2**](https://huggingface.co/google/siglip2-base-patch16-384) | RWKV7-0.4B     |    72.04     | 38.75       | 55.52       | 43.32       |
+|             | RWKV7-1.5B     |     76.95    | 44.96       | 58.88       | 63.10       |
+|             | RWKV7-3B       |     78.30     |   51.09          |   60.75          |     70.93        |
 
-- **多种微调方法**：支持LoRA、PISSA、Bone, State Tuning等
-- **量化训练**：支持INT8/NF4量化，显著降低显存占用
-- **灵活的数据加载**：支持多种数据采样策略
-- **显存优化**：多种DeepSpeed策略可选
-- **损失Mask**：支持QA对话和填充部分的损失Mask
-- **无限长度训练**：支持infctx训练模式, 此模式利用了RWKV恒定显存占用的优势，在有限的资源下训练“无限”上下文
-- **支持多种硬件**：目前，RWKV-PEFT 官方支持 NVIDIA, AMD, 摩尔线程，沐曦，天数智芯等多种硬件平台, 昇腾NPU的实现会在后期实现。注意：目前我们只支持 NVIDIA 的 issue 请求。
-- **使用rwkv-fla高效训练**: rwkv-fla是基于triton的线性注意力算子，可以在不支持cuda的硬件上高效率运行。
+# 语音指标
 
-## 详细配置说明
+| **Encoder** | **LLM** | **LibriSpeech** | **Aishell-1** |
+|:--------------:|:--------------:|:--------------:|:--------------:|
+|[**wavlm large**](https://huggingface.co/microsoft/wavlm-large) | RWKV7-0.4B | 2.51%(clean) | 9.68%(dev) |
+|            |            | 7.72%(other) | 10.21%(test) |
 
-### 1. PEFT方法选择
-```bash
---peft bone --bone_config $lora_config
-```
-
-### 2. 训练部分选择
-```bash
---train_parts ["time", "ln"]
-```
-- 可选部分：emb、head、time、ln
-- 默认训练：time、ln（参数量占比小）
-
-### 3. 量化训练
-```bash
---quant int8/nf4
-```
-
-### 4. 无限长度训练（infctx）
-```bash
---train_type infctx --chunk_ctx 512 --ctx_len 2048
-```
-- ctx_len：目标训练长度
-- chunk_ctx：切片长度，需小于ctx_len
-
-### 5. 数据加载策略
-```bash
---dataload pad
-```
-- get：默认随机采样（RWKV-LM方式）
-- pad：固定长度填充采样
-- only：单条数据采样（仅支持bsz=1）
-
-### 6. DeepSpeed策略
-```bash
---strategy deepspeed_stage_1
-```
-可选策略：
-- deepspeed_stage_1：优先使用
-- deepspeed_stage_2/3：大模型或全量微调时使用
-- deepspeed_stage_2_offload
-- deepspeed_stage_3_offload
-
-### 7. FLA算子
-默认情况下， RWKV-PEFT 会使用自定义的cuda内核来实现wkv计算。 但您也可以使用`--fla`来开启Triton内核。
-```
---fla
-```
-## GPU支持情况
-
-- NVIDIA: CUDA
-- Intel、摩尔线程、沐曦、天数智芯: FLA, 这意味着你需要手动传入 `--fla`
-- 昇腾: CANN(soon)
-
-## 引用
-
-如果您觉得本项目对您有帮助，请引用我们的工作：
-```bib
-@misc{kang2024boneblockaffineadaptationlarge,
-      title={Bone: Block-Affine Adaptation of Large Language Models}, 
-      author={Jiale Kang},
-      year={2024},
-      eprint={2409.15371},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL},
-      url={https://arxiv.org/abs/2409.15371}, 
-}
+## 语音识别 & 语音问答 (Demo)
+| **Encoder** | **LLM** | **task** | **Checkpoint** |
+|:--------------:|:--------------:|:--------------:|:--------------:|
+|[**wavlm large**](https://huggingface.co/microsoft/wavlm-large) | RWKV7-0.1B | EN asr|[WorldRWKV/RWKV7-0.1B-wavlmLarge-ENASR-demo](https://huggingface.co/WorldRWKV/RWKV7-0.1B-wavlmLarge-ENASR-demo)|
+|            |     RWKV7-0.4B       | EN asr|[WorldRWKV/RWKV7-0.4B-wavlmLarge-ENASR-demo](https://huggingface.co/WorldRWKV/RWKV7-0.4B-wavlmLarge-ENASR-demo)|
+|            |     RWKV7-0.4B       | CN asr|[WorldRWKV/RWKV7-0.4B-wavlmLarge-CNASR-demo](https://huggingface.co/WorldRWKV/RWKV7-0.4B-wavlmLarge-CNASR-demo)|
+|            |     RWKV7-0.4B       | EN qa|[WorldRWKV/RWKV7-0.4B-wavlmLarge-ENQA-demo](https://huggingface.co/WorldRWKV/RWKV7-0.4B-wavlmLarge-ENQA-demo)|
