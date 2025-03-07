@@ -5,26 +5,28 @@
 </h1>
 
 \[ English | [中文](README_zh.md) \]
-## 简介
-使用原生RWKV7实现任意模态的输入输出，朝着World Model进发
-## 发布
-- [3/7] 🔥 开源仓库 **WorldRWKV: Exploring RWKV7’s Understanding Capabilities of Any Modality in the World**. 预计下周发布论文和训练细节 [HFModel](https://huggingface.co/WorldRWKV).
-## 环境
-- 克隆仓库并进入文件
+## Introduction
+Implementing arbitrary modality input/output using native RWKV7 architecture; advancing toward building a World Model
+
+## Release
+- [3/7] 🔥 Release Repo **WorldRWKV: Exploring RWKV7’s Understanding Capabilities of Any Modality in the World**. Tech report and training details will be release next week at [HFModel](https://huggingface.co/WorldRWKV).
+
+## Building Env
+- Clone repo and direct to target DIR
 ```
 git clone https://github.com/JL-er/WorldRWKV.git
 cd WorldRWKV
 ```
-- 安装包
+- Dependencies
 ```
 conda create -n world python=3.12
 conda activate world
-pip install -r requirements.txt #中国用户添加-i https://pypi.tuna.tsinghua.edu.cn/simple
-# 推荐 torch=>2.4.0
+pip install -r requirements.txt #for Chinese User please add -i https://pypi.tuna.tsinghua.edu.cn/simple
+# Recommend torch=>2.4.0
 ```
-## 推理
+## Inference
 > [!NOTE]
-> 使用的encoder模型需要和encoder_type对应,具体内容请在world/world_encoder.py中查看
+> Please make sure encoder model matchs encoder_type. More details are here:  world/world_encoder.py
 ```
 from infer.worldmodel import Worldinfer
 from PIL import Image
@@ -46,9 +48,9 @@ result = model.generate(text, image)
 print(result)
 ```
 
-## 训练
+## Training
 > [!NOTE]
-> 使用的encoder模型需要和encoder_type对应,不同任务需要有对应的data_type。你也可以在world/world_encoder.py中创建自己的模态类
+> Encoder model has to match encoder type while different tasks use different data types。You can register your own modality class in world/world_encoder.py
 ```
 load_model=/home/rwkvos/model/rwkv/RWKV-x070-World-2.9B-v3-20250211-ctx4096.pth
 proj_dir=/home/rwkvos/peter/out_model/rwkv7-3b-pretrain-siglip
@@ -57,9 +59,9 @@ data_file=/home/rwkvos/data/hf-imgs/pretrain595
 n_layer=32
 n_embd=2560
 
-encoder_path="google/siglip2-base-patch16-384" #选择你需要的encoder
-encoder_type=siglip #在worldencoder中注册类型
-data_type=hf_img #数据类型
+encoder_path="google/siglip2-base-patch16-384" #chose your own encoder model
+encoder_type=siglip # Register encoder model in worldencoder
+data_type=hf_img 
 
 micro_bsz=32
 epoch_save=1
@@ -81,9 +83,16 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \   # 中国用户使�
 --my_testing "x070" --train_step adapter rwkv #train_step 选择你要训练的部分，adapter、rwkv
 ```
 
-## 功能
-### WorldRWKV已实现的功能以及后续添加的功能
-| Function      | Work |
+## Web-demo (Using Gradio)
+```
+python audio_multiturns_web.py # For Audio QA and ASR
+ 
+python visual_web.py  # For Visual QA 
+
+```
+## Abilities
+### Tasks WorldRWKV already accomplished and future direction
+| Already      | Future |
 |:--------------:|:-----------:|
 | asr            | ✅          |
 | speech to text | ✅          |
@@ -93,7 +102,7 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \   # 中国用户使�
 |speech to speech| ❌          |
 
 
-## 视觉问答基准
+## Visual QA Benchmarks
 
 | **Encoder** | **LLM** | **VQAV2** | **TextVQA** | **GQA** | **ScienceQA** | **Checkpoint** |
 |:--------------:|:--------------:|:--------------:|:--------------:|:--------------:|:--------------:|:--------------:|
@@ -104,7 +113,7 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \   # 中国用户使�
 |             | RWKV7-1.5B   |     76.95    | 44.96       | 58.88       | 63.10       |[WorldRWKV/RWKV7-1.5B-siglip2](https://huggingface.co/WorldRWKV/RWKV7-1.5B-siglip2)     |
 |             | RWKV7-3B      |     78.30     |   51.09          |   60.75          |     70.93        |[WorldRWKV/RWKV7-3B-siglip2](https://huggingface.co/WorldRWKV/RWKV7-3B-siglip2)       |
 
-## 语音识别基准
+## ASR Benchmarks
 
 | **Encoder** | **LLM** | **LibriSpeech** | **Aishell-1** |
 |:--------------:|:--------------:|:--------------:|:--------------:|
@@ -113,7 +122,7 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \   # 中国用户使�
 |[**wavlm base+**](https://huggingface.co/microsoft/wavlm-base-plus) | RWKV7-0.4B | 3.08%(clean) | 12.40%(dev) |
 |            |            | 10.38%(other) | 13.46%(test) |
 
-## 语音识别&语音问答(Demo)
+## ASR & AUDIO QA (Demo)
 | **Encoder** | **LLM** | **task** | **Checkpoint** |
 |:--------------:|:--------------:|:--------------:|:--------------:|
 |[**wavlm large**](https://huggingface.co/microsoft/wavlm-large) | RWKV7-0.1B | EN asr|[WorldRWKV/RWKV7-0.1B-wavlmLarge-ENASR-demo](https://huggingface.co/WorldRWKV/RWKV7-0.1B-wavlmLarge-ENASR-demo)|
