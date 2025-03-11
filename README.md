@@ -131,6 +131,10 @@ python visual_web.py  # For Visual QA
 |            |            | 6.51%(other) | 10.33%(test) |
 |[**wavlm base+**](https://huggingface.co/microsoft/wavlm-base-plus) | RWKV7-0.4B | 3.08%(clean) | 12.40%(dev) |
 |            |            | 10.38%(other) | 13.46%(test) |
+|[**whisper medium**](https://huggingface.co/openai/whisper-medium) | RWKV7-0.4B | 5.33%(clean) | 5.08%(dev) |
+|            |            | 12.28%(other) | 5.83%(test) |
+|[**whisper small**](https://huggingface.co/openai/whisper-small) | RWKV7-0.4B | 6.24%(clean) | 6.29%(dev) |
+|            |            | 16.92%(other) | 6.95%(test) |
 
 ## ASR & AUDIO QA (Demo)
 | **Encoder** | **LLM** | **task** | **Checkpoint** |
