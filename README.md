@@ -145,3 +145,24 @@ python visual_web.py  # For Visual QA
 |            |     RWKV7-0.4B       | EN qa|[WorldRWKV/RWKV7-0.4B-wavlmLarge-ENQA-demo](https://huggingface.co/WorldRWKV/RWKV7-0.4B-wavlmLarge-ENQA-demo)|
 
 
+## ASR Comparison
+
+We conduct a comparative analysis of our World-RWKV model against several state-of-the-art ASR models using benchmark datasets. The results demonstrate that World-RWKV exhibits remarkable and competitive performance despite limited training steps and data. This can be attributed to its inherent capability in audio comprehension, which enables it to excel in various audio-related tasks.
+
+### Librispeech
+
+|**Model** | **Training Details** | **test-clean(%)** | **test-other(%)** |
+|:--------------:|:--------------:|:--------------:|:--------------:|
+|**WorldRWKV** | trained on 960h data with 2 epoches (about 4.4k steps) | 2.43 | 6.51 |
+|**Zipformer** | trained on 960h data with 170 epoches (about 1600k steps) | 2.00 | 4.30 |
+|**Paraformer-v2** | not provided | 3.00 | 6.90 |
+|**SenseVoice** | trianed on private 400,000 hours of multilingual audio data | 2.57 | 4.28 |
+
+### Aishell-1
+
+|**Model** | **Training Details** | **test(%)** | **dev(%)** |
+|:--------------:|:--------------:|:--------------:|:--------------:|
+|**WorldRWKV** | trained on 170h data with 3 epoches (about 5.6k steps) | 5.83 | 5.08 | 
+|**Zipformer** | trained on 170h data with 56 epoches (about 220k steps) | 4.28 | 4.03 |
+|**Paraformer-v2** | not provided | 4.70 | 4.30 |
+|**SenseVoice** | trianed on private 400,000 hours of multilingual audio data | 2.09 | - |
