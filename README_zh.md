@@ -120,8 +120,14 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \   # 中国用户使�
 
 | **Encoder** | **LLM** | **LibriSpeech** | **Aishell-1** |
 |:--------------:|:--------------:|:--------------:|:--------------:|
-|[**wavlm large**](https://huggingface.co/microsoft/wavlm-large) | RWKV7-0.4B | 2.51%(clean) | 9.68%(dev) |
-|            |            | 7.72%(other) | 10.21%(test) |
+|[**wavlm large**](https://huggingface.co/microsoft/wavlm-large) | RWKV7-0.4B | 2.43%(clean) | 9.68%(dev) |
+|            |            | 6.51%(other) | 10.33%(test) |
+|[**wavlm base+**](https://huggingface.co/microsoft/wavlm-base-plus) | RWKV7-0.4B | 3.08%(clean) | 12.40%(dev) |
+|            |            | 10.38%(other) | 13.46%(test) |
+|[**whisper medium**](https://huggingface.co/openai/whisper-medium) | RWKV7-0.4B | 5.33%(clean) | 5.08%(dev) |
+|            |            | 12.28%(other) | 5.83%(test) |
+|[**whisper small**](https://huggingface.co/openai/whisper-small) | RWKV7-0.4B | 6.24%(clean) | 6.29%(dev) |
+|            |            | 16.92%(other) | 6.95%(test) |
 
 ## 语音识别 & 语音问答 (Demo)
 | **Encoder** | **LLM** | **task** | **Checkpoint** |
@@ -130,3 +136,25 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \   # 中国用户使�
 |            |     RWKV7-0.4B       | EN asr|[WorldRWKV/RWKV7-0.4B-wavlmLarge-ENASR-demo](https://huggingface.co/WorldRWKV/RWKV7-0.4B-wavlmLarge-ENASR-demo)|
 |            |     RWKV7-0.4B       | CN asr|[WorldRWKV/RWKV7-0.4B-wavlmLarge-CNASR-demo](https://huggingface.co/WorldRWKV/RWKV7-0.4B-wavlmLarge-CNASR-demo)|
 |            |     RWKV7-0.4B       | EN qa|[WorldRWKV/RWKV7-0.4B-wavlmLarge-ENQA-demo](https://huggingface.co/WorldRWKV/RWKV7-0.4B-wavlmLarge-ENQA-demo)|
+
+## 语音能力对比
+
+我们使用基准数据集对我们的 World-RWKV 模型与几种最先进的 ASR 模型进行了比较分析。结果表明，尽管训练步骤和数据有限，World-RWKV 仍表现出卓越且具有竞争力的性能。这可以归因于其固有的音频理解能力，这使其能够在各种与音频相关的任务中表现出色。
+
+### Librispeech
+
+|**Model** | **Training Details** | **test-clean(%)** | **test-other(%)** |
+|:--------------:|:--------------:|:--------------:|:--------------:|
+|**WorldRWKV** | 使用 960h 数据进行 2 次训练（约 4.4k 步） | 2.43 | 6.51 |
+|**Zipformer** | 使用 960h 数据进行训练，共计 170 个时期（约 1600k 步） | 2.00 | 4.30 |
+|**Paraformer-v2** | 未提供 | 3.00 | 6.90 |
+|**SenseVoice** | 使用 40 万小时的多语言音频数据进行训练 | 2.57 | 4.28 |
+
+### Aishell-1
+
+|**Model** | **Training Details** | **test(%)** | **dev(%)** |
+|:--------------:|:--------------:|:--------------:|:--------------:|
+|**WorldRWKV** | 使用 170 小时数据进行 3 次训练（约 5.6k 步） | 5.83 | 5.08 | 
+|**Zipformer** | 使用 170 小时数据进行训练，共 56 个轮数（约 220k 步） | 4.28 | 4.03 |
+|**Paraformer-v2** | 未提供 | 4.70 | 4.30 |
+|**SenseVoice** | 使用 40 万小时的多语言音频数据进行训练 | 2.09 | - |
