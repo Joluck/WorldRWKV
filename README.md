@@ -147,7 +147,7 @@ python visual_web.py  # For Visual QA
 
 ## ASR Comparison
 
-We conduct a comparative analysis of our World-RWKV model against several state-of-the-art ASR models using benchmark datasets. The results demonstrate that World-RWKV exhibits remarkable and competitive performance despite limited training steps and data. This can be attributed to its inherent capability in audio comprehension, which enables it to excel in various audio-related tasks.
+We conduct a comparative analysis of our World-RWKV model against several state-of-the-art ASR models using benchmark datasets. The results demonstrate that World-RWKV exhibits remarkable and competitive performance despite limited training steps and data. This can be attributed to its inherent potential in audio comprehension, which enables it to excel in various audio-related tasks.
 
 ### Librispeech
 
