@@ -144,13 +144,27 @@ class WorldDataset(Dataset):
             #     self.data = json.load(file)          
             with jsonlines.open(f'{args.data_file}/chat.jsonl') as file:
                 self.data = list(file)
-        elif args.data_type =='hf' or args.data_type =='qa' or args.data_type =='cnqa' or args.data_type =='cnasr':
-            from datasets import load_dataset
-            dataset = load_dataset(args.data_file, split="train")
-            self.data = dataset
-            print(len(dataset))
-            # print(dataset['train'][0])
-            # self.data = dataset["ENGLISH"]
+        elif args.data_type =='hf' or args.data_type =='qa' or args.data_type =='cnqa' or args.data_type =='cnasr' or args.data_type =='tts':
+            from datasets import load_dataset, concatenate_datasets
+
+            def list_subdirectories(base_path):
+                return [
+                    name for name in os.listdir(base_path)
+                    if os.path.isdir(os.path.join(base_path, name)) and not name.startswith('.')
+                ]
+
+            datasets = []
+            files = list_subdirectories(args.data_file)
+            if not files:
+                datasets = load_dataset(args.data_file, split="train")
+            else:
+                for file in files:
+                    dataset = load_dataset(f'{args.data_file}/{file}', split="train")
+                    datasets.append(dataset)
+                datasets = concatenate_datasets(datasets)
+            self.data = datasets
+            print(len(datasets))
+            
         elif args.data_type == "jsonl":
             import jsonlines
 
@@ -188,9 +202,15 @@ class WorldDataset(Dataset):
             audio = sample['audio']
             data_answer = sample['text'] #####caption
             audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-            #sign,_ = self.speech_encoder(audio)
             sign = audio
             token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        elif args.data_type =='tts':
+            sample = self.data[idx]
+            audio = sample['audio']
+            data_answer = sample['text'] #####caption
+            audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+            sign = audio
+            token = torch.tensor(pipeline.encode(f'User: {data_answer}\x17Assistant:'))
         elif args.data_type =='qa':
             sample = self.data[idx]
             # audio = sample['speech_cosy'][0]

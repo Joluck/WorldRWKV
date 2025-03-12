@@ -14,7 +14,7 @@ class SpeechAdapter(nn.Module):
 
         if self.hidden_dim==None:
             self.hidden_dim = project_dim*2
-        self.conv = nn.Conv1d(in_channels=self.encoder_dim , out_channels=self.hidden_dim, kernel_size=3, stride=2)
+        self.conv = nn.Conv1d(in_channels=self.encoder_dim , out_channels=self.hidden_dim, kernel_size=3, stride=2, padding=2)
         self.proj = nn.Sequential(
             nn.Linear(self.hidden_dim, self.hidden_dim),
             nn.ReLU(),
@@ -56,15 +56,13 @@ class WhisperEncoder(nn.Module):
 
     def forward(self, x):
         input_dict = self.processor(
-            x, return_tensors="pt", sampling_rate=16000
+            x, return_tensors="pt", sampling_rate=16000, return_attention_mask=True
         ).to(self.device,dtype=torch.bfloat16)
-        
-        # encoder only
-        # x = self.model(**input_dict).last_hidden_state
 
-        # stf encoder
-        x = self.model(**input_dict).last_hidden_state
+        chunk = torch.sum(input_dict['attention_mask'], dim=-1)//2+1
         
+        x = self.model(**input_dict).last_hidden_state
+        x = x[:,:chunk,:]
         x= self.adapter(x)#x:(B,T,hidden dim)
-        # mask = torch.ones(x.shape[0],x.shape[1]).to(self.device,dtype=torch.bfloat16)
+        
         return x

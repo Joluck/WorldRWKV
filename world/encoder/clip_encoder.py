@@ -52,15 +52,15 @@ class ClipEncoder(nn.Module):
         device="cuda",) -> None:
         super(ClipEncoder, self).__init__()
 
-        
+        self.device = device
         self.image_processor = CLIPImageProcessor.from_pretrained(encoder_path)
-        self.model = CLIPVisionModel.from_pretrained(encoder_path).to('cuda', torch.bfloat16)
+        self.model = CLIPVisionModel.from_pretrained(encoder_path)
         self.encoder_dim = self.model.config.hidden_size
 
-        self.adapter = VisualAdapter(self.encoder_dim, project_dim).to('cuda',dtype=torch.bfloat16)
+        self.adapter = VisualAdapter(self.encoder_dim, project_dim)
     def forward(self, x):
 
-        x= torch.from_numpy(self.image_processor(x)['pixel_values'][0]).to('cuda',dtype=torch.bfloat16)
+        x= torch.from_numpy(self.image_processor(x)['pixel_values'][0]).to(self.device,dtype=torch.bfloat16)
 
         x = self.model(x.unsqueeze(0), output_hidden_states=True).last_hidden_state
         

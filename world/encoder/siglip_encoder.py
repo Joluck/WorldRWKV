@@ -51,15 +51,15 @@ class SiglipEncoder(nn.Module):
         super(SiglipEncoder, self).__init__()
 
         
-        
-        self.model = AutoModel.from_pretrained(encoder_path).vision_model.to('cuda', torch.bfloat16)
+        self.device = device
+        self.model = AutoModel.from_pretrained(encoder_path).vision_model
         self.image_processor = SiglipImageProcessor.from_pretrained(encoder_path)
         self.encoder_dim = 768  #self.model.config.hidden_size
 
-        self.adapter = VisualAdapter(self.encoder_dim, project_dim).to('cuda',dtype=torch.bfloat16)
+        self.adapter = VisualAdapter(self.encoder_dim, project_dim)
     def forward(self, x):
 
-        x= torch.from_numpy(self.image_processor(x)['pixel_values'][0]).to('cuda',dtype=torch.bfloat16)
+        x= torch.from_numpy(self.image_processor(x)['pixel_values'][0]).to(self.device,dtype=torch.bfloat16)
         x = self.model(x.unsqueeze(0), output_hidden_states=True).last_hidden_state
         x = self.adapter(x)
         
