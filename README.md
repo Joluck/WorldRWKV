@@ -58,6 +58,22 @@ result = model.generate(text, image)
 print(result)
 ```
 
+
+## Benchmarking
+
+We adopt [VLMEvalKit](https://github.com/open-compass/VLMEvalKit) as our benchmark suite and implement a custom branch. It's loaded here as a submodule. Refer to [Quickstart](benchmark/VLMEvalKit/docs/en/Quickstart.md) for more details.
+
+An example usage is as follows, you will need to modify the model path in [config.json](eval/vlmevalkit/config.json)
+```bash
+git submodule update --init --recursive # To obtain the submodule
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+pip install -e benchmark/VLMEvalKit
+python third_party/VLMEvalKit/run.py  --work-dir ./results/ --config eval/vlmevalkit/config.json
+```
+Currenty multi-GPU is not tested.
+<Directory to save results>
+
+
 ## Training
 > [!NOTE]
 > Encoder model has to match encoder type while different tasks use different data types。You can register your own modality class in world/world_encoder.py
