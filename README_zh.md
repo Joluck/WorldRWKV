@@ -60,7 +60,7 @@ python visual_web.py  # For Visual QA
 
 ## 测试
 
-测试用例基于 [VLMEvalKit](https://github.com/open-compass/VLMEvalKit) 开发，并作为一个submodule引入。参数设置等内容参考[Quickstart](benchmark/VLMEvalKit/docs/en/Quickstart.md)
+测试用例基于 [VLMEvalKit](https://github.com/open-compass/VLMEvalKit) 开发，并作为一个submodule引入。参数设置等内容参考[Quickstart](third_party/VLMEvalKit/docs/zh-CN/Quickstart.md)
 
 以下是使用示例，请根据需要修改 [config.json](eval/vlmevalkit/config.json)
 ```bash
@@ -69,7 +69,7 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 pip install -e benchmark/VLMEvalKit
 python -m benchmark/VLMEvalKit/run.py  --work-dir <Directory to save results> --config eval/vlmevalkit/config.json
 ```
-Currenty multi-GPU is not tested.
+Currenty multi-GPU  is not tested.
 
 # 训练
 > [!NOTE]

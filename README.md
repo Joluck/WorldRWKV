@@ -61,7 +61,7 @@ print(result)
 
 ## Benchmarking
 
-We adopt [VLMEvalKit](https://github.com/open-compass/VLMEvalKit) as our benchmark suite and implement a custom branch. It's loaded here as a submodule. Refer to [Quickstart](benchmark/VLMEvalKit/docs/en/Quickstart.md) for more details.
+We adopt [VLMEvalKit](https://github.com/open-compass/VLMEvalKit) as our benchmark suite and implement a custom branch. It's loaded here as a submodule. Refer to [Quickstart](third_party/VLMEvalKit/docs/en/Quickstart.md) for more details.
 
 An example usage is as follows, you will need to modify the model path in [config.json](eval/vlmevalkit/config.json)
 ```bash

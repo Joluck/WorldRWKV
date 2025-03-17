@@ -49,6 +49,8 @@ class Worldinfer():
                                 token_ban = [0], # ban the generation of some tokens
                                 token_stop = [24], # stop generation whenever you see any token here
                                 chunk_len = 256) # split input into chunks to save VRAM (shorter -> slower)
+        else:
+            self.args=args
         print('RWKV finish!!!')
 
         config = {
