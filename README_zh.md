@@ -58,6 +58,19 @@ python visual_web.py  # For Visual QA
 
 ```
 
+## 测试
+
+测试用例基于 [VLMEvalKit](https://github.com/open-compass/VLMEvalKit) 开发，并作为一个submodule引入。参数设置等内容参考[Quickstart](third_party/VLMEvalKit/docs/zh-CN/Quickstart.md)
+
+以下是使用示例，请根据需要修改 [config.json](eval/vlmevalkit/config.json)
+```bash
+git submodule update --init --recursive # To obtain the submodule
+export PYTHONPATH=$PYTHONPATH:$(pwd)
+pip install -e benchmark/VLMEvalKit
+python -m benchmark/VLMEvalKit/run.py  --work-dir <Directory to save results> --config eval/vlmevalkit/config.json
+```
+Currenty multi-GPU  is not tested.
+
 # 训练
 > [!NOTE]
 > 请确保encoder model和encoder_type匹配，以及训练任务与data_type匹配。你也可以在world/world_encoder.py中注册自己的encoder类
