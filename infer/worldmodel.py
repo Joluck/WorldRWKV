@@ -109,6 +109,10 @@ class Worldinfer():
             # Get the SIGLIP encoder from the model
             siglip_encoder = self.modality.world_encoder
             
+            # Determine if we should use token reduction for videos
+            # For videos, we need to be careful about token reduction to ensure consistent token counts
+            use_for_videos = self.token_reduction_params.get('for_videos', False)
+            
             # Apply FrameFusion to the encoder
             apply_siglip_framefusion(
                 siglip_encoder, 

@@ -103,6 +103,10 @@ class SiglipFrameFusion(nn.Module):
         # Now reshape to match the expected output format
         final_features = reduced_features.reshape(reduced_frames, patches_per_frame, hidden_dim)
         
+        # Ensure the data type matches the model's expected type
+        model_dtype = next(self.siglip_encoder.adapter.parameters()).dtype
+        final_features = final_features.to(model_dtype)
+        
         # Apply the adapter to the final features
         final_features = self.siglip_encoder.adapter(final_features)
         
@@ -207,6 +211,10 @@ class SiglipImageFrameFusion(nn.Module):
             reduction_percentage = (1 - reduced_patches / num_patches) * 100
             print(f'FrameFusion reduced patches from {num_patches} to {reduced_patches} ({reduction_percentage:.2f}% reduction)')
             
+            # Ensure the data type matches the model's expected type
+            model_dtype = next(self.siglip_encoder.adapter.parameters()).dtype
+            reduced_features = reduced_features.to(model_dtype)
+            
             # Apply the adapter to the reduced features
             reduced_features = self.siglip_encoder.adapter(reduced_features)
             results.append(reduced_features)
@@ -215,8 +223,21 @@ class SiglipImageFrameFusion(nn.Module):
         if len(results) == 1:
             return results[0]
         
-        # Otherwise, concatenate the results
-        return torch.cat(results, dim=0)
+        # For videos, ensure all frames have the same number of tokens
+        # Find the minimum token count across all frames
+        min_tokens = min([result.shape[0] for result in results])
+        
+        # Resize all frames to have the same token count
+        aligned_results = []
+        for result in results:
+            if result.shape[0] > min_tokens:
+                # Keep only the first min_tokens tokens
+                aligned_results.append(result[:min_tokens])
+            else:
+                aligned_results.append(result)
+        
+        # Now concatenate the results with consistent dimensions
+        return torch.cat(aligned_results, dim=0)
 
 def apply_siglip_framefusion(siglip_encoder, cost=0.3, similarity_lower_bound=0.6, ratio_lower_bound=0.1, for_single_images=False):
     """
