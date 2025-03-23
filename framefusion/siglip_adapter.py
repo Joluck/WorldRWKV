@@ -101,14 +101,15 @@ class SiglipFrameFusion(nn.Module):
             reduced_tokens += padding_needed
         
         # Now reshape to match the expected output format
-        final_features = reduced_features.reshape(reduced_frames, patches_per_frame, hidden_dim)
+        # final_features = reduced_features.reshape(reduced_frames, patches_per_frame, hidden_dim)
         
         # Ensure the data type matches the model's expected type
         model_dtype = next(self.siglip_encoder.adapter.parameters()).dtype
-        final_features = final_features.to(model_dtype)
-        
+        # final_features = final_features.to(model_dtype)
+        reduced_features = reduced_features.to(model_dtype)
+        print(f"Shape of reduced features: {reduced_features.shape}")
         # Apply the adapter to the final features
-        final_features = self.siglip_encoder.adapter(final_features)
+        final_features = self.siglip_encoder.adapter(reduced_features)
         
         # Log reduction statistics
         reduction_percentage = (1 - reduced_frames / num_frames) * 100
