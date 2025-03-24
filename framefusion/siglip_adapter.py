@@ -107,13 +107,13 @@ class SiglipFrameFusion(nn.Module):
         model_dtype = next(self.siglip_encoder.adapter.parameters()).dtype
         # final_features = final_features.to(model_dtype)
         reduced_features = reduced_features.to(model_dtype)
-        print(f"Shape of reduced features: {reduced_features.shape}")
+        #print(f"Shape of reduced features: {reduced_features.shape}")
         # Apply the adapter to the final features
         final_features = self.siglip_encoder.adapter(reduced_features)
         
         # Log reduction statistics
         reduction_percentage = (1 - reduced_frames / num_frames) * 100
-        print(f'FrameFusion reduced frames from {num_frames} to {reduced_frames} ({reduction_percentage:.2f}% reduction)')
+        #print(f'FrameFusion reduced frames from {num_frames} to {reduced_frames} ({reduction_percentage:.2f}% reduction)')
         
         return final_features
 
@@ -210,7 +210,7 @@ class SiglipImageFrameFusion(nn.Module):
             # Log reduction statistics
             reduced_patches = reduced_features.shape[1]
             reduction_percentage = (1 - reduced_patches / num_patches) * 100
-            print(f'FrameFusion reduced patches from {num_patches} to {reduced_patches} ({reduction_percentage:.2f}% reduction)')
+            #print(f'FrameFusion reduced patches from {num_patches} to {reduced_patches} ({reduction_percentage:.2f}% reduction)')
             
             # Ensure the data type matches the model's expected type
             model_dtype = next(self.siglip_encoder.adapter.parameters()).dtype
