@@ -69,7 +69,16 @@ export PYTHONPATH=$PYTHONPATH:$(pwd)
 pip install -e benchmark/VLMEvalKit
 python -m benchmark/VLMEvalKit/run.py  --work-dir <Directory to save results> --config eval/vlmevalkit/config.json
 ```
-Currenty multi-GPU  is not tested.
+目前尚未测试多GPU下的运行。
+
+## 多模态Token融合
+
+我们使用了 [FrameFusion](https://github.com/thu-nics/FrameFusion) 来融合多张图片和视频帧的token，使其能够适应4096的上下文长度。
+
+为了使用这个功能，你需要在 `Worldinfer` 构造函数中设置 `use_token_reduction=True`，对于相关参数的设置请参考其官方代码仓库与[论文](https://arxiv.org/abs/2501.01986). 
+
+> [!NOTE]
+> 虽然这个Token融合方法能够融合多张图片和视频帧的token，但 `RWKV7-*-siglip2` 系列模型并未针对多张图片与视频的处理进行过训练，因此在相关任务中可能会出现意外行为。
 
 # 训练
 > [!NOTE]
