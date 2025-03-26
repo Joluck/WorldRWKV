@@ -71,7 +71,15 @@ pip install -e benchmark/VLMEvalKit
 python third_party/VLMEvalKit/run.py  --work-dir ./results/ --config eval/vlmevalkit/config.json
 ```
 Currenty multi-GPU is not tested.
-<Directory to save results>
+
+## Multimodal Token Fusion
+
+We used [FrameFusion](https://github.com/thu-nics/FrameFusion) to fuse the image and video tokens so they could fit into the context length of 4096.
+
+To enable the feature, simply set `use_token_reduction=True` in the `Worldinfer` constructor. Refer to the official codebase or [paper]() for further details.
+
+> [!NOTE]
+> Though this method is capable of fusing multi-image and video tokens, current `RWKV7-*-siglip2` models have not been trained with multi-image and video QA tasks. Unexpected behaviors may occur.
 
 
 ## Training

@@ -3,6 +3,7 @@
 ########################################################################################################
 
 from typing import Optional
+from einops import rearrange
 import types, gc, os, time, re, math
 import torch
 import torch.nn as nn
@@ -10,6 +11,7 @@ from torch.nn import functional as F
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.allow_tf32 = True
 torch.backends.cuda.matmul.allow_tf32 = True
+
 current_path = os.path.dirname(os.path.abspath(__file__))
 
 ########################################################################################################
@@ -280,10 +282,16 @@ class RWKV(MyModule):
 
         x = self.z['emb.weight'][idx]
         if isinstance(sign, torch.Tensor):
-            sign = sign.squeeze(0)
+            # print(f"Image token shape: {sign.shape}, text token shape: {x.shape}")
+            # sign = sign.squeeze(0)
+            sign = rearrange(sign, 'b h w -> (b h) w')
+            # print(f"Rearranged image token shape: {sign.shape}")
             # sign = F.layer_norm(sign, (self.args.n_embd,), weight=self.z['blocks.0.ln0.weight'], bias=self.z['blocks.0.ln0.bias'])
 
             x = torch.cat((sign,x.to('cuda')), dim=0)
+            if x.shape[0] > 4096:
+                print(f"Token count exceeds 4096: {x.shape[0]}")
+                
 
         x = F.layer_norm(x, (self.args.n_embd,), weight=self.z['blocks.0.ln0.weight'], bias=self.z['blocks.0.ln0.bias'])
         # if isinstance(sign, torch.Tensor):

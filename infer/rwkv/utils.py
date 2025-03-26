@@ -7,6 +7,8 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 
+from infer.rwkv.model import RWKV
+
 class PIPELINE_ARGS():
     def __init__(self, temperature=1.0, top_p=0.85, top_k=0, alpha_frequency=0.2, alpha_presence=0.2, alpha_decay=0.996, token_ban=[], token_stop=[], chunk_len=256):
         self.temperature = temperature
@@ -20,7 +22,7 @@ class PIPELINE_ARGS():
         self.chunk_len = chunk_len # split input into chunks to save VRAM (shorter -> slower)
 
 class PIPELINE():
-    def __init__(self, model, WORD_NAME):
+    def __init__(self, model:RWKV, WORD_NAME):
         self.model = model
         if WORD_NAME == 'cl100k_base':
             import tiktoken

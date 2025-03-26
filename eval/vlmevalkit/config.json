@@ -1,10 +1,11 @@
 {
     "model": {
-        "worldrwkv7_siglip_custom": {
+        "worldrwkv7_3b_siglip": {
             "class": "WorldRWKV7_Siglip2",
             "model_path": "/home/rwkv/WorldRWKV/model/RWKV7-3B-siglip2/rwkv-0",
             "encoder_path": "google/siglip2-base-patch16-384",
             "use_custom_prompt": true,
+            "use_token_reduction":true,
             "verbose": false,
             "args": {
                 "temperature": 1.0,
@@ -19,17 +20,21 @@
         }
     },
     "data": {
-        "MMBench_DEV_EN": {
-            "class": "ImageMCQDataset",
-            "dataset": "MMBench_DEV_EN"
-        },
-        "MMMU_TEST": {
+        "MMMU_DEV_VAL":{
             "class": "MMMUDataset",
-            "dataset": "MMMU_TEST"
+            "dataset": "MMMU_DEV_VAL"
         },
-        "MMMU_EVAL":{
-            "class": "MMMUDataset",
-            "dataset": "MMMU_DEV_EVAL"
+        "TextVQA_VAL":{
+            "class":"ImageVQADataset",
+            "dataset":"TextVQA_VAL"
+        },
+        "ScienceQA_VAL":{
+            "class":"ImageMCQDataset",
+            "dataset":"ScienceQA_VAL"
+        },
+        "COCO_VAL":{
+            "class":"ImageCaptionDataset",
+            "dataset":"COCO_VAL"
         }
     }
 }

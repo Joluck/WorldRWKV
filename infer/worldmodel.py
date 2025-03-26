@@ -16,9 +16,44 @@ from infer.rwkv.utils import PIPELINE, PIPELINE_ARGS
 
 
 from world.world_encoder import WorldEncoder
+from framefusion.siglip_adapter import apply_siglip_framefusion
+
+from typing import Union, Optional, Dict, Any
+from collections.abc import Sequence
+from PIL import Image
 
 class Worldinfer():
-    def __init__(self, model_path, encoder_type, encoder_path, strategy='cuda bf16', args=None):
+    def __init__(self, model_path, encoder_type, encoder_path, strategy='cuda bf16', args=None, 
+                 use_token_reduction=False, token_reduction_params=None):
+        """
+        Initialize a Worldinfer model with optional token reduction.
+        
+        Args:
+            model_path: Path to the RWKV model
+            encoder_type: Type of encoder to use (e.g., 'siglip')
+            encoder_path: Path to the encoder model
+            strategy: RWKV strategy string (e.g., 'cuda bf16')
+            args: PIPELINE_ARGS for RWKV
+            use_token_reduction: Whether to use token reduction (FrameFusion)
+            token_reduction_params: Parameters for token reduction, a dict with keys:
+                - cost: The computational budget (higher values allow more token reduction)
+                - similarity_threshold: Threshold for token similarity to be merged
+                - ratio_threshold: Minimum ratio of tokens to keep
+                - for_single_images: Whether to apply reduction to single images
+        """
+        # Set up token reduction parameters
+        self.use_token_reduction = use_token_reduction
+        self.token_reduction_params = {
+            'cost': 0.3,
+            'similarity_threshold': 0.6,
+            'ratio_threshold': 0.1,
+            'for_single_images': True
+        }
+        if token_reduction_params is not None:
+            self.token_reduction_params.update(token_reduction_params)
+        
+        # Store encoder type for later use
+        self.encoder_type = encoder_type
 
         ss = strategy.split(' ')
         DEVICE = ss[0]
@@ -60,9 +95,38 @@ class Worldinfer():
         }
         self.modality = WorldEncoder(**config).to('cuda', torch.bfloat16)        
         self.modality.load_checkpoint(modality_dict)
+        
+        # Apply token reduction if requested
+        if self.use_token_reduction:
+            self.apply_token_reduction()
+    
+    def apply_token_reduction(self):
+        """
+        Apply token reduction to the encoder based on the configured parameters.
+        Currently only supports SIGLIP encoder.
+        """
+        if self.encoder_type.lower() == 'siglip':
+            # Get the SIGLIP encoder from the model
+            siglip_encoder = self.modality.world_encoder
+            
+            # Determine if we should use token reduction for videos
+            # For videos, we need to be careful about token reduction to ensure consistent token counts
+            use_for_videos = self.token_reduction_params.get('for_videos', False)
+            
+            # Apply FrameFusion to the encoder
+            apply_siglip_framefusion(
+                siglip_encoder, 
+                cost=self.token_reduction_params['cost'],
+                similarity_lower_bound=self.token_reduction_params['similarity_threshold'],
+                ratio_lower_bound=self.token_reduction_params['ratio_threshold'],
+                for_single_images=self.token_reduction_params['for_single_images']
+            )
+            print(f"Applied token reduction with parameters: {self.token_reduction_params}")
+        else:
+            print(f"Token reduction not supported for encoder type: {self.encoder_type}")
 
 
-    def generate(self, text, modality='none', state=None):
+    def generate(self, text, modality:Union[str, None, Sequence[Image.Image]]='none', state=None):
         if isinstance(modality, str):
             y=None
         else:

@@ -2,6 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+from typing import Union, Sequence
+from PIL import Image
+
 
 from transformers import AutoModel, SiglipImageProcessor
 
@@ -47,20 +50,45 @@ class SiglipEncoder(nn.Module):
         encoder_path,
         project_dim,
         train_mode="adapter",
-        device="cuda",) -> None:
+        device="cuda" if torch.cuda.is_available() else "cpu",) -> None:
         super(SiglipEncoder, self).__init__()
 
         
         self.device = device
-        self.model = AutoModel.from_pretrained(encoder_path).vision_model
+        self.model = AutoModel.from_pretrained(encoder_path).vision_model.to(self.device)
         self.image_processor = SiglipImageProcessor.from_pretrained(encoder_path)
         self.encoder_dim = 768  #self.model.config.hidden_size
-
-        self.adapter = VisualAdapter(self.encoder_dim, project_dim)
-    def forward(self, x):
-
-        x= torch.from_numpy(self.image_processor(x)['pixel_values'][0]).to(self.device,dtype=torch.bfloat16)
-        x = self.model(x.unsqueeze(0), output_hidden_states=True).last_hidden_state
-        x = self.adapter(x)
         
-        return x
+        self.adapter = VisualAdapter(self.encoder_dim, project_dim).to(self.device)
+    def forward(self, images:Union[Image.Image, Sequence[Image.Image]]):
+        """
+        Encode single image or a list of images, preserving each image as a separate token
+        
+        Args:
+            images: List of PIL images to encode
+        
+        Returns:
+            Tensor of shape (num_images, project_dim) where each row represents an encoded image
+        """
+        # Process all images
+        try:
+            # Process images with the image processor
+            if isinstance(images, Image.Image):
+                images = [images]
+                
+            processed_images = [self.image_processor(img)['pixel_values'][0] for img in images]
+            # Stack images and move to the correct device
+            x = torch.tensor(np.stack(processed_images)).to(self.device)
+            
+            # Get features from vision model
+            with torch.no_grad():
+                x = self.model(x, output_hidden_states=True).last_hidden_state
+            
+            # Apply adapter to get projected features
+            features = self.adapter(x)
+            
+            # Return features for all images (no pooling)
+            return features
+        except Exception as e:
+            print(f"Error in SiglipEncoder forward pass: {e}")
+            raise
