@@ -42,7 +42,7 @@ def eval_model(args):
             image_file = line["image"]
             image = Image.open(os.path.join(args.image_folder, image_file)).convert('RGB')
         else:
-            image = None
+            image = 'none'
             # continue
 
         if args.single_pred_prompt:
@@ -52,7 +52,7 @@ def eval_model(args):
         input_ids = f'\x16User: {qs}\x17Assistant:'
         # input_ids = f'\x16<|user|>:{qs}\x17<|assistant|>:'
         with torch.inference_mode():
-            output_ids = model.generate(input_ids, image)
+            output_ids,_ = model.generate(input_ids, image)
 
         outputs = output_ids[1:] #remove ''
         cur_prompt = '<image>' +qs

@@ -90,7 +90,7 @@ def eval_model(args):
         cur_prompt = line["text"]
 
         with torch.inference_mode():
-            output_ids = model.generate(text[0], image_tensor)
+            output_ids,_ = model.generate(text[0], image_tensor)
 
 
         outputs = output_ids[1:] #remove ' '
