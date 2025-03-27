@@ -46,6 +46,28 @@ def process_conversation_text(conversations):
 
     return conversation_text
 
+def process_tokens(conversations):
+    # conversation_text = f"\x16"
+    inputs = []
+    labels = []
+    for conv in conversations:
+        role = conv.get('from', '').lower()
+        content = conv.get('value', '')
+        
+        if role == 'human':
+            question = f"\x16User: {content}\x17"
+            input = torch.tensor(pipeline.encode(question))
+            label = torch.full_like(input, -100)
+        elif role in ['assistant', 'gpt']:
+            answer = f"\x16Assistant: {content}\x17"
+            input= torch.tensor(pipeline.encode(answer))
+            label = input
+        inputs.append(input)
+        labels.append(label)
+    inputs =torch.cat(inputs)
+    labels =torch.cat(labels)
+    return inputs, labels
+
 def bytes_to_audio(audio_bytes):
     with io.BytesIO(audio_bytes) as buf:
         # 使用 soundfile 读取音频数据
@@ -139,6 +161,12 @@ class WorldDataset(Dataset):
             with jsonlines.open(f'{args.data_file}/answer.jsonl') as file:
                 self.data = list(file)
         elif args.data_type=='hf_img':
+            import jsonlines
+            # with open(f'{args.data_file}/chat.json', 'r', encoding='utf-8') as file:
+            #     self.data = json.load(file)          
+            with jsonlines.open(f'{args.data_file}/chat.jsonl') as file:
+                self.data = list(file)
+        elif args.data_type=='visual':
             import jsonlines
             # with open(f'{args.data_file}/chat.json', 'r', encoding='utf-8') as file:
             #     self.data = json.load(file)          
@@ -255,13 +283,22 @@ class WorldDataset(Dataset):
             token = torch.tensor(pipeline.encode(f'\n\nAssistant: {data_answer}\x17'))
             image = Image.open(mod_path).convert('RGB')
             sign = transform(image)
+        elif args.data_type == 'visual':
+
+            img_name = self.data[idx]['image']
+            conversation_text = self.data[idx]['conversations']
+
+            mod_path = f'{args.data_file}/images/{img_name}' 
+            image = Image.open(mod_path).convert('RGB')
+            sign = image
+            text_tokens, text_labels = process_tokens(conversation_text)
+            return sign, text_tokens, text_labels
         elif args.data_type== 'hf_img':
             
             img_name = self.data[idx]['image']
             conversation_text = self.data[idx]['conversations']
             conversation_text = process_conversation_text(conversation_text)
-            # data_question = self.data[idx]['conversations'][0]['value']
-            # data_answer = self.data[idx]['conversations'][1]['value']
+
             mod_path = f'{args.data_file}/images/{img_name}' 
             token = torch.tensor(pipeline.encode(conversation_text)) 
             image = Image.open(mod_path).convert('RGB')

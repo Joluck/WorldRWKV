@@ -18,6 +18,7 @@ if importlib.util.find_spec('deepspeed'):
     
 from .block import Block
 from .loss import L2Wrap
+from .cat import mod_pad_text
 
 from rwkv.utils import PIPELINE
 pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")
@@ -144,6 +145,15 @@ class RWKV(pl.LightningModule):
 
             loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1), reduction='none')
             loss = torch.sum(loss * mask) / sum_mask
+            return loss
+        
+        if args.data_type == 'visual': ########test
+            signs, text_tokens, text_labels = batch
+            sign, idx, targets = mod_pad_text(self, signs, text_tokens, text_labels)
+
+            logits = self(idx,sign)
+            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
+
             return loss
         
         signs, tokens = batch

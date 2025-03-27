@@ -293,14 +293,7 @@ def rwkv_train():
             callbacks=[train_callback(args)],
         )
 
-    # if trainer.global_rank == 0:
-    #     for n in model.state_dict():
-    #         shape = model.state_dict()[n].shape
-    #         shape = [i for i in shape if i != 1]
-    #         if len(shape) > 1:
-    #             print(f"{str(shape[0]).ljust(5)} {str(shape[1]).ljust(5)} {n}")
-    #         else:
-    #             print(f"{str(shape[0]).ljust(5)}       {n}")
+
     def collate_fn(batch):
         # 解压 batch 中的数据
         signs, tokens = zip(*batch)
@@ -311,6 +304,19 @@ def rwkv_train():
         # 其他数据进行 stack
         tokens_batch = list(tokens)
         return signs_batch, tokens_batch
+    
+    def collate_fn_mod(batch):
+        # 解压 batch 中的数据
+        signs, tokens, labels = zip(*batch)
+        
+        # signs 保持 list of lists
+        signs_batch = list(signs)  # 或直接使用 signs
+        
+        # 其他数据进行 stack
+        tokens_batch = list(tokens)
+
+        labels_batch = list(labels)
+        return signs_batch, tokens_batch, labels_batch
     train_data = WorldDataset(args)
     if args.data_shuffle == 1:
         shuffle = True
@@ -327,6 +333,17 @@ def rwkv_train():
             persistent_workers=False,
             drop_last=True,
         )
+    if args.data_type == "visual":
+        train_data = DataLoader(
+            train_data,
+            shuffle=shuffle,
+            pin_memory=True,
+            batch_size=args.micro_bsz,
+            num_workers=1,
+            persistent_workers=False,
+            drop_last=True,
+            collate_fn = collate_fn_mod
+            )
     else:
         train_data = DataLoader(
                 train_data,
