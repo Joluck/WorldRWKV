@@ -4,6 +4,7 @@ import os
 import json
 from tqdm import tqdm
 import shortuuid
+import re
 
 
 from torch.utils.data import Dataset, DataLoader
@@ -45,7 +46,8 @@ class CustomDataset(Dataset):
 
         image = Image.open(os.path.join(self.image_folder, image_file)).convert('RGB')
 
-        input_ids = f'\x16User: {qs}\x17Assistant:'
+        # input_ids = f'\x16User: {qs}\x17Assistant:'
+        input_ids = f'\x16User: {qs}\x17\x16Assistant:'
         # input_ids = f'\x16<|user|>:{qs}\x17<|assistant|>:'
         return input_ids, image
 
@@ -94,7 +96,11 @@ def eval_model(args):
 
 
         outputs = output_ids[1:] #remove ' '
-
+        if args.model_type == 'g1':
+            answer_matches = re.findall(r'<answer>(.*?)</answer>', outputs, re.DOTALL)
+            outputs = answer_matches[0].strip() if answer_matches else ""
+        else:
+            outputs = outputs   
         ans_id = shortuuid.uuid()
         ans_file.write(json.dumps({"question_id": idx,
                                    "prompt": cur_prompt,
@@ -114,7 +120,7 @@ if __name__ == "__main__":
     parser.add_argument("--answers-file", type=str, default="answer.jsonl")
     parser.add_argument("--conv_mode", type=str, default="llava_v1")
     parser.add_argument("--type", type=str, default="clip")
-
+    parser.add_argument("--model_type", type=str, default='world')
     parser.add_argument("--num-chunks", type=int, default=1)
     parser.add_argument("--chunk-idx", type=int, default=0)
     parser.add_argument("--temperature", type=float, default=0.2)
