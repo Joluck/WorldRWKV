@@ -67,7 +67,7 @@ An example usage is as follows, you will need to modify the model path in [confi
 ```bash
 git submodule update --init --recursive # To obtain the submodule
 export PYTHONPATH=$PYTHONPATH:$(pwd)
-pip install -e benchmark/VLMEvalKit
+pip install -e third_party/VLMEvalKit
 python third_party/VLMEvalKit/run.py  --work-dir ./results/ --config eval/vlmevalkit/config.json
 ```
 Currenty multi-GPU is not tested.
