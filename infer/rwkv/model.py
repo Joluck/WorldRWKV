@@ -11,7 +11,7 @@ torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.allow_tf32 = True
 torch.backends.cuda.matmul.allow_tf32 = True
 current_path = os.path.dirname(os.path.abspath(__file__))
-
+ROCm_flag=torch.version.hip is not None
 ########################################################################################################
 
 if os.environ.get('RWKV_JIT_ON') != '0':
@@ -28,26 +28,46 @@ else:
 
 if os.environ.get('RWKV_CUDA_ON') == '1':
     from torch.utils.cpp_extension import load
-    try:
-        load(
-            name=f"wkv_cuda",
-            sources=[f"{current_path}/cuda/wrapper.cpp", f"{current_path}/cuda/operators.cu", f"{current_path}/cuda/gemm_fp16_cublas.cpp"],
-            verbose=True,
-            extra_ldflags=["cublas.lib" if os.name == "nt" else ""],
-            extra_cuda_cflags=["--use_fast_math", "-O3", "--extra-device-vectorization"],
-            is_python_module=False)
-        DISABLE_CUBLAS_GEMM = False
-    except:
-        print("Failed to build cuBLAS matmul, falling back to torch.matmul. Small model with fp16 will overflow.")
-        load(
-            name=f"wkv_cuda",
-            sources=[f"{current_path}/cuda/wrapper.cpp", f"{current_path}/cuda/operators.cu"],
-            verbose=True,
-            extra_cuda_cflags=["--use_fast_math", "-O3", "--extra-device-vectorization"],
-            extra_cflags=["-DDISABLE_CUBLAS_GEMM"],
-            is_python_module=False)
-        DISABLE_CUBLAS_GEMM = True
-
+    if ROCm_flag == True:
+        try:
+            load(
+                name=f"wkv_cuda",
+                sources=[f"{current_path}/cuda/wrapper.cpp", f"{current_path}/cuda/operators.cu", f"{current_path}/cuda/gemm_fp16_cublas.cpp"],
+                verbose=True,
+                extra_ldflags=["cublas.lib" if os.name == "nt" else ""],
+                extra_cuda_cflags=['-xhip', '-fopenmp', '-ffast-math', '-O3','-munsafe-fp-atomics','--offload-arch=gfx1100'],
+                is_python_module=False)
+            DISABLE_CUBLAS_GEMM = False
+        except:
+            print("Failed to build cuBLAS matmul, falling back to torch.matmul. Small model with fp16 will overflow.")
+            load(
+                name=f"wkv_cuda",
+                sources=[f"{current_path}/cuda/wrapper.cpp", f"{current_path}/cuda/operators.cu"],
+                verbose=True,
+                extra_cuda_cflags=['-xhip', '-fopenmp', '-ffast-math', '-O3','-munsafe-fp-atomics','--offload-arch=gfx1100'],
+                extra_cflags=["-DDISABLE_CUBLAS_GEMM"],
+                is_python_module=False)
+            DISABLE_CUBLAS_GEMM = True
+    else:
+        try:
+            load(
+                name=f"wkv_cuda",
+                sources=[f"{current_path}/cuda/wrapper.cpp", f"{current_path}/cuda/operators.cu", f"{current_path}/cuda/gemm_fp16_cublas.cpp"],
+                verbose=True,
+                extra_ldflags=["cublas.lib" if os.name == "nt" else ""],
+                extra_cuda_cflags=["--use_fast_math", "-O3", "--extra-device-vectorization"],
+                is_python_module=False)
+            DISABLE_CUBLAS_GEMM = False
+        except:
+            print("Failed to build cuBLAS matmul, falling back to torch.matmul. Small model with fp16 will overflow.")
+            load(
+                name=f"wkv_cuda",
+                sources=[f"{current_path}/cuda/wrapper.cpp", f"{current_path}/cuda/operators.cu"],
+                verbose=True,
+                extra_cuda_cflags=["--use_fast_math", "-O3", "--extra-device-vectorization"],
+                extra_cflags=["-DDISABLE_CUBLAS_GEMM"],
+                is_python_module=False)
+            DISABLE_CUBLAS_GEMM = True      
     @MyStatic
     def cuda_wkv(T: int, C: int, w, u, k, v, aa, bb, pp):
         assert 1 * C % min(C, 32) == 0
@@ -192,7 +212,11 @@ HEAD_SIZE = 64
 
 if os.environ.get('RWKV_CUDA_ON') == '1':
     from torch.utils.cpp_extension import load
-    load(name="wkv7s", sources=[f"{current_path}/cuda/rwkv7_op.cpp", f"{current_path}/cuda/rwkv7.cu"], is_python_module=False,
+    if ROCm_flag == True:
+        load(name="wkv7s", sources=[f"{current_path}/cuda/rwkv7_op.cpp", f"{current_path}/cuda/rwkv7.cu"], is_python_module=False,
+                        verbose=True, extra_cuda_cflags=['-xhip', '-fopenmp', '-ffast-math', '-O3','-munsafe-fp-atomics','--offload-arch=gfx1100',f"-D_N_={HEAD_SIZE}"])
+    else:
+        load(name="wkv7s", sources=[f"{current_path}/cuda/rwkv7_op.cpp", f"{current_path}/cuda/rwkv7.cu"], is_python_module=False,
                         verbose=True, extra_cuda_cflags=["-res-usage", "--use_fast_math", "-O3", "-Xptxas -O3", "--extra-device-vectorization", f"-D_N_={HEAD_SIZE}"])
     class WKV_7(torch.autograd.Function):
         @staticmethod

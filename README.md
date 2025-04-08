@@ -35,6 +35,13 @@ pip install -r requirements.txt #for Chinese User please add -i https://pypi.tun
 # Recommend torch=>2.4.0
 ```
 ## Inference
+```pyhton
+python -m web.visual_web
+```
+#### This is also compatible with AMD graphics cards
+#### If you are RX6000 series, please change the ```--offload-arch=gfx1100``` to ```--offload-arch=gfx1030``` at line 38,47,217 in ```/home/alic-li/WorldRWKV/infer/rwkv/model.py```, One-click operation for RX7000 series
+#### It is assumed that you already know how to build AMD's ROCm environment~
+
 > [!NOTE]
 > Please make sure encoder model matchs encoder_type. More details are here:  world/world_encoder.py
 ```
