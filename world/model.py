@@ -20,8 +20,6 @@ from .block import Block
 from .loss import L2Wrap
 from .cat import mod_pad_text
 
-from rwkv.utils import PIPELINE
-pipeline = PIPELINE('rwkv6', "rwkv_vocab_v20230424")
 
 class RWKV(pl.LightningModule):
     def __init__(self, args, modality=None):
@@ -45,62 +43,6 @@ class RWKV(pl.LightningModule):
 
         self.modality = modality
 
-
-    def pad_mod(self, tensor_list, signal_list):
-        """
-        对一个包含不同长度张量的列表进行填充，使所有张量的长度相同且为16的整数倍，并生成掩码。
-        参数:
-            tensor_list (list of torch.Tensor): 输入的张量列表，每个张量形状为 [seq_len]。
-            pad_value (int, optional): 填充值，默认值为 0。
-        返回:
-            padded_tensor (torch.Tensor): 填充后的张量，形状为 [batch_size, target_len]。
-            mask (torch.Tensor): 填充掩码，1 表示有效数据，0 表示填充部分。
-        """
-
-        modality_list = []
-        #max_len = max((token.size(0) + signal.size(1)) for token, signal in zip(tensor_list, modality_list))
-        max_len = 0
-        for token, signal in zip(tensor_list, signal_list):
-
-            modality = self.modality(signal)
-            if modality is False:
-                modality_list.append(False)
-                continue
-            modality_list.append(modality)
-            max_len = max(token.size(0) + modality.size(1), max_len)
-
-        # 计算目标长度（向上取整到16的整数倍）
-        target_len = ((max_len + 15) // 16 * 16)+1
-
-        if self.args.ctx_len is not None:
-            target_len = min(target_len, self.args.ctx_len+1)
-
-        masks = torch.zeros((len(tensor_list), target_len-1), dtype=torch.int32)
-        x = []
-        y = []
-        s = []
-        m = []
-        for token, signal, mask in zip(tensor_list, modality_list, masks):
-            if signal is False:
-                continue
-            pad_len = target_len-(token.size(0) + signal.size(1))
-            
-            padded_token = F.pad(token, (0, pad_len), value=0)
-
-            x_token = padded_token[:-1]
-            y_token = F.pad(padded_token, (signal.size(1)-1, 0), value=0)
-
-            mask[signal.size(1) : -pad_len] = 1 
-            
-            s.append(signal)
-            x.append(x_token)
-            y.append(y_token)
-            m.append(mask)
-
-        y = torch.stack(y, dim=0)
-        m = torch.stack(m, dim=0).cuda()
-       
-        return s, x, y, m
 
 
     def forward(self, idx, signs= None):
@@ -136,37 +78,17 @@ class RWKV(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         args = self.args
-        if args.data_type == "jsonl": ########test
-            idx, targets, mask = batch
-            
-            mask = mask.view(-1)
-            sum_mask = torch.sum(mask).item()
-            logits = self(idx)
 
-            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1), reduction='none')
-            loss = torch.sum(loss * mask) / sum_mask
-            return loss
         
-        if args.data_type == 'visual': ########test
-            signs, text_tokens, text_labels = batch
-            sign, idx, targets = mod_pad_text(self, signs, text_tokens, text_labels)
+        signs, text_tokens, text_labels = batch
+        sign, idx, targets = mod_pad_text(self, signs, text_tokens, text_labels)
 
-            logits = self(idx,sign)
-            loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
-
-            return loss
-        
-        signs, tokens = batch
-        sign, idx, targets, mask = self.pad_mod(tokens, signs)
-
-        mask = mask.view(-1)
-        sum_mask = torch.sum(mask).item()
         logits = self(idx,sign)
+        loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
 
-        loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1), reduction='none')
-        loss = torch.sum(loss * mask) / sum_mask
-    
         return loss
+        
+
 
 
     def configure_optimizers(self):

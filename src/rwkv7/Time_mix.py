@@ -3,9 +3,7 @@ import os, math, gc, importlib
 import torch
 
 import torch.nn as nn
-from src.infctx_module import *
 
-from src.rwkvLinear import make_linear_att
 from src.rwkvop import RUN_CUDA_RWKV7g
 from torch.nn import functional as F
 
@@ -87,10 +85,10 @@ class RWKV_Tmix_x070(nn.Module):
             self.r_k = nn.Parameter(torch.zeros(H,N))
 
             self.time_shift = nn.ZeroPad2d((0, 0, 1, -1))
-            self.receptance = make_linear_att(C, C, bias=False)
-            self.key = make_linear_att(C, C, bias=False)
-            self.value = make_linear_att(C, C, bias=False)
-            self.output = make_linear_att(C, C, bias=False)
+            self.receptance = nn.Linear(C, C, bias=False)
+            self.key = nn.Linear(C, C, bias=False)
+            self.value = nn.Linear(C, C, bias=False)
+            self.output = nn.Linear(C, C, bias=False)
             self.ln_x = nn.GroupNorm(H, C, eps=(1e-5)*(args.head_size_divisor**2)) # !!! notice eps value !!!
 
             # !!! initialize if you are using RWKV_Tmix_x070 in your code !!!
