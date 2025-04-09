@@ -28,6 +28,13 @@ pip install -r requirements.txt #中国用户添加-i https://pypi.tuna.tsinghua
 ```
 
 # 推理
+```pyhton
+python -m web.visual_web
+```
+#### 现已经支持 AMD Radeon 显卡在linux ROCm环境下的推理 
+#### 如果你是的显卡 RX6000 系列的显卡, 请修改在```/home/alic-li/WorldRWKV/infer/rwkv/model.py``` 38,47,217 行中 ```--offload-arch=gfx1100``` 为 ```--offload-arch=gfx1030```, RX7000系列的一键运行
+#### 默认你已经会搭建AMD的ROCm环境了嗷~
+
 > [!NOTE]
 > 请确保encoder model和encoder_type匹配. 更多细节在:world/world_encoder.py
 ```

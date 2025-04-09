@@ -1,10 +1,10 @@
 import gradio as gr
 from infer.worldmodel import Worldinfer
 from PIL import Image
-
+import re
 # 初始化模型
-llm_path = '/home/rwkv/model/rwkv7-3b-siglip/rwkv-0'
-encoder_path = '/home/rwkv/model/siglip2basep16s384'
+llm_path = '/home/alic-li/RWKV-v7/world_weights/rwkv-0'
+encoder_path = '/home/alic-li/RWKV-v7/siglip2-base-patch16-384/'
 encoder_type = 'siglip'
 
 # 全局变量存储当前上传的图片和模型状态
@@ -16,15 +16,17 @@ first_question = False # 存储模型状态
 model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=encoder_path)
 
 # 处理用户输入的核心逻辑
+import html  # 导入html库
+
+import re
+
+# 处理用户输入的核心逻辑
 def chat_fn(user_input, chat_history, image=None):
-    
-    global current_image, current_state,first_question
-    # print('2222222222222',first_question)
+    global current_image, current_state, first_question
     
     # 如果上传了新图片，更新当前图片并重置状态
     if image is not None:
         current_image = image
-        # current_state = None  # 新图片需要重置状态
     
     # 如果没有图片，提示用户上传
     if current_image is None:
@@ -32,9 +34,8 @@ def chat_fn(user_input, chat_history, image=None):
         chat_history.append((user_input, bot_response))
         return "", chat_history
     
-    
     # 确保图片是PIL Image格式
-    if not isinstance(current_image, Image.Image) and current_image!='none':
+    if not isinstance(current_image, Image.Image) and current_image != 'none':
         current_image = Image.fromarray(current_image)
     
     # 构造提示文本
@@ -42,31 +43,35 @@ def chat_fn(user_input, chat_history, image=None):
     
     # 生成结果，传入当前状态
     try:
-        # 检查是否是第一轮对话
-        
-        
         if first_question:
-            # print('333333333',first_question)
-            print(current_image)
-            result,state = model.generate(prompt, current_image,state=None)
+            result, state = model.generate(prompt, current_image, state=None)
         else:
-            # print('44444',first_question)
-            print(current_image)
-            
-            result,state = model.generate(prompt, 'none', state=current_state)
-            
-       
-
-        # result,state = model.generate(prompt, current_image, state=current_state)
-
-        
-      
+            result, state = model.generate(prompt, 'none', state=current_state)
         
         first_question = False
-        bot_response, current_state = result,state
-        # current_image='none'
-        # print('current_state1=',current_state)
-      
+        bot_response, current_state = result, state
+        
+        # 解析<think>和</think>标签
+        think_pattern = re.compile(r'<think>(.*?)</think>', re.DOTALL)
+        think_matches = think_pattern.findall(bot_response)
+        
+        # 解析<answer></answer>标签
+        answer_pattern = re.compile(r'<answer>(.*?)</answer>', re.DOTALL)
+        answer_matches = answer_pattern.findall(bot_response)
+        
+        # 构造最终的输出
+        final_response = ""
+        for match in think_matches:
+            final_response += f"<details><summary>Think 🤔 </summary>{html.escape(match)}</details>"
+        
+        for match in answer_matches:
+            final_response += "Answer 💡"
+            final_response += "\n"
+            final_response += html.escape(match)
+        
+        # 转义HTML标签
+        bot_response = final_response
+        
     except Exception as e:
         bot_response = f"生成回复时出错: {str(e)}"
         current_state = None  # 出错时重置状态
@@ -76,7 +81,6 @@ def chat_fn(user_input, chat_history, image=None):
     
     # 返回更新后的组件状态
     return "", chat_history  # 清空输入框，更新聊天记录
-
 # 处理图片上传
 def update_image(image):
     global current_image, current_state,first_question
@@ -190,4 +194,4 @@ with gr.Blocks(title="WORLD RWKV", theme=gr.themes.Soft()) as demo:
 
 # 启动应用
 if __name__ == "__main__":
-    demo.launch(server_name="0.0.0.0", server_port=7860)
+    demo.launch(server_name="127.0.0.1", server_port=7860)
