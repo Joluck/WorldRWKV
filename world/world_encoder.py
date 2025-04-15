@@ -6,6 +6,7 @@ from world.encoder.speech_encoder import SpeechEncoder
 from world.encoder.whisper_encoder import WhisperEncoder
 from world.encoder.clip_encoder import ClipEncoder
 from world.encoder.siglip_encoder import SiglipEncoder
+from world.encoder.timer_encoder import TimerEncoder
 
 
 class WorldEncoder(nn.Module):
@@ -20,6 +21,7 @@ class WorldEncoder(nn.Module):
             # "visual": VisualEncoder,
             "speech": SpeechEncoder,
             "siglip": SiglipEncoder,
+            "timer": TimerEncoder,
         }
         
         if encoder_type not in encoder_map:
