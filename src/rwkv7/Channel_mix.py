@@ -1,9 +1,6 @@
 
-import os, math, gc, importlib
 import torch
 import torch.nn as nn
-from src.infctx_module import *
-from src.rwkvLinear import make_linear_ffn
 
     
 class RWKV_CMix_x070(nn.Module):
@@ -20,8 +17,8 @@ class RWKV_CMix_x070(nn.Module):
                 ddd[0, 0, i] = i / args.n_embd
             self.x_k = nn.Parameter(1.0 - torch.pow(ddd, ratio_1_to_almost0**4))
 
-        self.key = make_linear_ffn(args.n_embd, args.n_embd * 4, bias=False)
-        self.value = make_linear_ffn(args.n_embd * 4, args.n_embd, bias=False)
+        self.key = nn.Linear(args.n_embd, args.n_embd * 4, bias=False)
+        self.value = nn.Linear(args.n_embd * 4, args.n_embd, bias=False)
 
         # !!! initialize if you are using RWKV_Tmix_x070 in your code !!!
         # self.key.weight.data.uniform_(-0.5/(args.n_embd**0.5), 0.5/(args.n_embd**0.5))

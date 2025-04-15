@@ -14,8 +14,6 @@ def rwkv_train():
     from lightning_utilities.core.rank_zero import rank_zero_info
     import lightning as pl
     import json
-    from src.args_type import TrainingArgs
-    from src.dataset import get_data_by_l_version, get_vocab_size
     rank_zero_info("########## work in progress ##########")
 
     parser = ArgumentParser()
@@ -270,7 +268,6 @@ def rwkv_train():
     ########################################################################################################
 
     from src.trainer import train_callback
-    from src.peft_loading import load_peft_model
     from world.model import RWKV
     from world.dataset import WorldDataset
     from world.world_load import WorldLoading
@@ -323,38 +320,26 @@ def rwkv_train():
     else:
         shuffle = False
 
-    if args.data_type == "jsonl":
-            train_data = DataLoader(
-            train_data,
-            shuffle=shuffle,
-            pin_memory=True,
-            batch_size=args.micro_bsz,
-            num_workers=1,
-            persistent_workers=False,
-            drop_last=True,
+    # if args.data_type == "jsonl":
+    #         train_data = DataLoader(
+    #         train_data,
+    #         shuffle=shuffle,
+    #         pin_memory=True,
+    #         batch_size=args.micro_bsz,
+    #         num_workers=1,
+    #         persistent_workers=False,
+    #         drop_last=True,
+    #     )
+    train_data = DataLoader(
+        train_data,
+        shuffle=shuffle,
+        pin_memory=True,
+        batch_size=args.micro_bsz,
+        num_workers=1,
+        persistent_workers=False,
+        drop_last=True,
+        collate_fn = collate_fn_mod
         )
-    if args.data_type == "visual":
-        train_data = DataLoader(
-            train_data,
-            shuffle=shuffle,
-            pin_memory=True,
-            batch_size=args.micro_bsz,
-            num_workers=1,
-            persistent_workers=False,
-            drop_last=True,
-            collate_fn = collate_fn_mod
-            )
-    else:
-        train_data = DataLoader(
-                train_data,
-                shuffle=shuffle,
-                pin_memory=True,
-                batch_size=args.micro_bsz,
-                num_workers=1,
-                persistent_workers=False,
-                drop_last=True,
-                collate_fn = collate_fn
-            )
 
     trainer.fit(model, train_data)
 

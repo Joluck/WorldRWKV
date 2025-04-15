@@ -216,73 +216,15 @@ class WorldDataset(Dataset):
     def __getitem__(self, idx):
         idx = self.index_manager.get_next_idx(idx_t=idx) if self.index_manager else idx
         args = self.args
-        if args.data_type =='wav':
 
-            mod_name = self.data[idx]['file_name']
-            data_answer = self.data[idx]['answer']
-            mod_path = f'{args.data_file}/{mod_name}'
-            audio, sample_rate = librosa.load(mod_path, sr=16000)  # sr=None 保持原采样率
-            #sign,_ = self.speech_encoder(audio)
-            sign = audio
-            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        elif args.data_type =='hf':
+        if args.data_type =='hf':
             sample = self.data[idx]
             audio = sample['audio']
             data_answer = sample['text'] #####caption
             audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
             sign = audio
-            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        elif args.data_type =='tts':
-            sample = self.data[idx]
-            audio = sample['audio']
-            data_answer = sample['text'] #####caption
-            audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-            sign = audio
-            token = torch.tensor(pipeline.encode(f'User: {data_answer}\x17Assistant:'))
-        elif args.data_type =='qa':
-            sample = self.data[idx]
-            # audio = sample['speech_cosy'][0]
-            # data_answer = sample['answer'] 
-
-            audio = sample['question_audio']
-            data_answer = sample['answer']
-            sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-
-            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        elif args.data_type =='cnqa':
-            sample = self.data[idx]
-            audio = sample['audio']
-            data_answer = sample['answer']
-            sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        elif args.data_type =='cnasr':
-            sample = self.data[idx]
-            audio = sample['audio']
-            data_answer = sample['transcript']
-            sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        elif args.data_type == "jsonl":
-            ctx_len = args.ctx_len
-            req_len = ctx_len + 1
-            ctx = self.data[idx]['text']
-            token = torch.tensor(pipeline.encode(ctx))
-            token_len = len(token)
-            pad_len = req_len - token_len
-        
-            dix = F.pad(token, (0, pad_len), value=0)
-            x = dix[:-1]
-            y = dix[1:]
-            mask = torch.zeros(req_len - 1)
-            mask[:token_len - 1] = 1
-            return x, y, mask
-        elif args.data_type == "img":
-
-            mod_name = self.data[idx]['file_name']
-            data_answer = self.data[idx]['answer']
-            mod_path = f'{args.data_file}/{mod_name}'
-            token = torch.tensor(pipeline.encode(f'\n\nAssistant: {data_answer}\x17'))
-            image = Image.open(mod_path).convert('RGB')
-            sign = transform(image)
+            text_tokens = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+            text_labels = text_tokens
         elif args.data_type == 'visual':
 
             img_name = self.data[idx]['image']
@@ -292,24 +234,101 @@ class WorldDataset(Dataset):
             image = Image.open(mod_path).convert('RGB')
             sign = image
             text_tokens, text_labels = process_tokens(conversation_text)
-            return sign, text_tokens, text_labels
-        elif args.data_type== 'hf_img':
-            
-            img_name = self.data[idx]['image']
-            conversation_text = self.data[idx]['conversations']
-            conversation_text = process_conversation_text(conversation_text)
+        return sign, text_tokens, text_labels
+        # if args.data_type =='wav':
 
-            mod_path = f'{args.data_file}/images/{img_name}' 
-            token = torch.tensor(pipeline.encode(conversation_text)) 
-            image = Image.open(mod_path).convert('RGB')
-            sign = image
+        #     mod_name = self.data[idx]['file_name']
+        #     data_answer = self.data[idx]['answer']
+        #     mod_path = f'{args.data_file}/{mod_name}'
+        #     audio, sample_rate = librosa.load(mod_path, sr=16000)  # sr=None 保持原采样率
+        #     #sign,_ = self.speech_encoder(audio)
+        #     sign = audio
+        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        # elif args.data_type =='hf':
+        #     sample = self.data[idx]
+        #     audio = sample['audio']
+        #     data_answer = sample['text'] #####caption
+        #     audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+        #     sign = audio
+        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        # elif args.data_type =='tts':
+        #     sample = self.data[idx]
+        #     audio = sample['audio']
+        #     data_answer = sample['text'] #####caption
+        #     audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+        #     sign = audio
+        #     token = torch.tensor(pipeline.encode(f'User: {data_answer}\x17Assistant:'))
+        # elif args.data_type =='qa':
+        #     sample = self.data[idx]
+        #     # audio = sample['speech_cosy'][0]
+        #     # data_answer = sample['answer'] 
+
+        #     audio = sample['question_audio']
+        #     data_answer = sample['answer']
+        #     sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+
+        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        # elif args.data_type =='cnqa':
+        #     sample = self.data[idx]
+        #     audio = sample['audio']
+        #     data_answer = sample['answer']
+        #     sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        # elif args.data_type =='cnasr':
+        #     sample = self.data[idx]
+        #     audio = sample['audio']
+        #     data_answer = sample['transcript']
+        #     sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
+        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        # elif args.data_type == "jsonl":
+        #     ctx_len = args.ctx_len
+        #     req_len = ctx_len + 1
+        #     ctx = self.data[idx]['text']
+        #     token = torch.tensor(pipeline.encode(ctx))
+        #     token_len = len(token)
+        #     pad_len = req_len - token_len
         
-        else:
-            data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])
-            data_answer = self.data['answer'][idx]
-            audio = librosa.resample(data_audio['array'],orig_sr= 48000,target_sr= 16000)
-            #sign,_ = self.speech_encoder(audio)
-            sign = audio
-            token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        #print(idx, f'Assistant: {data_answer}\x17')
-        return sign, token
+        #     dix = F.pad(token, (0, pad_len), value=0)
+        #     x = dix[:-1]
+        #     y = dix[1:]
+        #     mask = torch.zeros(req_len - 1)
+        #     mask[:token_len - 1] = 1
+        #     return x, y, mask
+        # elif args.data_type == "img":
+
+        #     mod_name = self.data[idx]['file_name']
+        #     data_answer = self.data[idx]['answer']
+        #     mod_path = f'{args.data_file}/{mod_name}'
+        #     token = torch.tensor(pipeline.encode(f'\n\nAssistant: {data_answer}\x17'))
+        #     image = Image.open(mod_path).convert('RGB')
+        #     sign = transform(image)
+        # elif args.data_type == 'visual':
+
+        #     img_name = self.data[idx]['image']
+        #     conversation_text = self.data[idx]['conversations']
+
+        #     mod_path = f'{args.data_file}/images/{img_name}' 
+        #     image = Image.open(mod_path).convert('RGB')
+        #     sign = image
+        #     text_tokens, text_labels = process_tokens(conversation_text)
+        #     return sign, text_tokens, text_labels
+        # elif args.data_type== 'hf_img':
+            
+        #     img_name = self.data[idx]['image']
+        #     conversation_text = self.data[idx]['conversations']
+        #     conversation_text = process_conversation_text(conversation_text)
+
+        #     mod_path = f'{args.data_file}/images/{img_name}' 
+        #     token = torch.tensor(pipeline.encode(conversation_text)) 
+        #     image = Image.open(mod_path).convert('RGB')
+        #     sign = image
+        
+        # else:
+        #     data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])
+        #     data_answer = self.data['answer'][idx]
+        #     audio = librosa.resample(data_audio['array'],orig_sr= 48000,target_sr= 16000)
+        #     #sign,_ = self.speech_encoder(audio)
+        #     sign = audio
+        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
+        # #print(idx, f'Assistant: {data_answer}\x17')
+        # return sign, token
