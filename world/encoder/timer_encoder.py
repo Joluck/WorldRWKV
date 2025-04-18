@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import numpy as np
+import inspect
 
 from transformers import AutoModelForCausalLM
 
@@ -16,8 +17,8 @@ class TimerAdapter(nn.Module):
         self.project_dim = project_dim
         self.hidden_dim = hidden_dim
 
-        if self.hidden_dim==None:
-            self.hidden_dim = project_dim*2
+        if self.hidden_dim is None:
+            self.hidden_dim = project_dim * 2
 
         self.pre_norm = nn.LayerNorm(self.project_dim)
         self.proj = nn.Sequential(
@@ -33,7 +34,6 @@ class TimerAdapter(nn.Module):
         #     nn.Linear(self.hidden_dim, self.project_dim),
         # )
 
-    
     def forward(self, x):        
         x = self.proj(x)
         return x + self.pre_norm(x)
@@ -50,18 +50,16 @@ class TimerEncoder(nn.Module):
 
         self.model = AutoModelForCausalLM.from_pretrained('thuml/timer-base-84m', trust_remote_code=True).to(self.device)
 
-            
-
-    def forward(self, x):
-        x = self.model.generate(x, max_new_tokens=self.prediction_length)
+    def forward(self, x): 
         
-        return x
-
+        outputs = self.model.forward(x, output_hidden_states=True)
+        
+        return outputs.hidden_states[-1]
 
 if __name__ == "__main__":
     encoder = TimerEncoder(prediction_length=96)
     batch_size, lookback_length = 1, 2880
     x = torch.randn(batch_size, lookback_length).cuda()
-    x = encoder(x)
-    print(x.shape)
+    outputs = encoder(x)
+    print("last hidden_states shape:", outputs.shape)
     print("timer encoder test pass")
