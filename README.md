@@ -19,7 +19,7 @@ Our goal is to implement training and inference in any modality using pure RWKV7
 - Join Us：[Discord](https://discord.com/invite/bDSBUMeFpc) QQ: 1015471226
 
 ## Release
-- [3/7] 🔥 Release Repo **WorldRWKV: Exploring RWKV7’s Understanding Capabilities of Any Modality in the World**. Tech report and training details will be release next week at [HFModel](https://huggingface.co/WorldRWKV).
+- [5/21] 🔥 Release Repo [**ModRWKV: Transformer Multimodality in Linear Time**](https://arxiv.org/abs/2505.14505).  [HFModel](https://huggingface.co/WorldRWKV).
 
 ## Building Env
 - Clone repo and direct to target DIR
