@@ -18,6 +18,7 @@ from infer.rwkv.utils import PIPELINE
 pipeline = PIPELINE('rwkv', "rwkv_vocab_v20230424")
 from PIL import Image
 
+from .frame_att import frame_att_generator
 import pandas as pd
 import librosa
 import io
@@ -31,6 +32,28 @@ transform = transforms.Compose([
     transforms.Resize((512, 512)),
     transforms.ToTensor()  # 将图像转换为张量
 ])
+
+def process_video(self, video_file):
+
+    try:
+        if "shareVideoGPTV" in video_file:
+            # # 如果是 shareVideoGPTV 类型的数据，直接从图像文件读取
+            # frame_files = sorted([os.path.join(video_file, f) for f in os.listdir(video_file)])
+            # num_frames_to_sample = getattr(self.args, 'frames_upbound', 10)
+            # sampled_indices = np.linspace(0, len(frame_files) - 1, num_frames_to_sample, dtype=int)
+
+            video_list = []
+            # for idx in sampled_indices:
+            #     frame = Image.open(frame_files[idx]).convert("RGB")
+            #     video_list.append(frame) 
+        else:
+            video_list = frame_att_generator(video_file, threshold=0.05, min_k=3, max_k=10)
+
+        return video_list      # 返回关键帧图像列表
+
+    except Exception as e:
+        print(f"Error loading video {video_file}: {e}")
+        raise
 
 def process_conversation_text(conversations):
     conversation_text = f"\x16"
@@ -56,10 +79,12 @@ def process_tokens(conversations):
         
         if role == 'human':
             question = f"\x16User: {content}\x17"
+            # print(question, "\n")
             input = torch.tensor(pipeline.encode(question))
             label = torch.full_like(input, -100)
         elif role in ['assistant', 'gpt']:
             answer = f"\x16Assistant: {content}\x17"
+            # print(answer, "\n")
             input= torch.tensor(pipeline.encode(answer))
             label = input
         inputs.append(input)
@@ -199,6 +224,13 @@ class WorldDataset(Dataset):
             with jsonlines.open(args.data_file) as file:
                 self.data = list(file)
 
+
+        elif args.data_type=='video':
+            import jsonlines
+            # with open(f'{args.data_file}/chat.json', 'r', encoding='utf-8') as file:
+            #     self.data = json.load(file)          
+            with jsonlines.open(f'{args.data_file}/chat.jsonl') as file:
+                self.data = list(file)
         else:
             self.data = pd.read_parquet(args.data_file)
 
@@ -234,6 +266,15 @@ class WorldDataset(Dataset):
             image = Image.open(mod_path).convert('RGB')
             sign = image
             text_tokens, text_labels = process_tokens(conversation_text)
+        elif args.data_type == 'video':
+
+            vid_name = self.data[idx]['video']
+            conversation_text = self.data[idx]['conversations']
+
+            vid_path = f'{args.data_file}/{vid_name}' 
+            sign = process_video(self, vid_path)
+            text_tokens, text_labels = process_tokens(conversation_text)
+            # print(sign,"\n")
         return sign, text_tokens, text_labels
         # if args.data_type =='wav':
 
