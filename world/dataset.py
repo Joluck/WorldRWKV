@@ -25,26 +25,14 @@ import soundfile as sf
 # 读取parquet文件
 from torchvision import transforms
 
-
+# import PIL.PngImagePlugin
+# # 增加MAX_TEXT_CHUNK的大小，默认是1MB，可以设置为更大的值，例如10MB
+# PIL.PngImagePlugin.MAX_TEXT_CHUNK = 10 * 1024 * 1024
 
 transform = transforms.Compose([
     transforms.Resize((512, 512)),
     transforms.ToTensor()  # 将图像转换为张量
 ])
-
-def process_conversation_text(conversations):
-    conversation_text = f"\x16"
-
-    for conv in conversations:
-        role = conv.get('from', '').lower()
-        content = conv.get('value', '')
-        
-        if role == 'human':
-            conversation_text += f"User: {content}\x17"
-        elif role in ['assistant', 'gpt']:
-            conversation_text += f"Assistant: {content}\x17"
-
-    return conversation_text
 
 def process_tokens(conversations):
     # conversation_text = f"\x16"
@@ -54,7 +42,7 @@ def process_tokens(conversations):
         role = conv.get('from', '').lower()
         content = conv.get('value', '')
         
-        if role == 'human':
+        if role in ['user','human']:
             question = f"\x16User: {content}\x17"
             input = torch.tensor(pipeline.encode(question))
             label = torch.full_like(input, -100)
@@ -153,25 +141,31 @@ class WorldDataset(Dataset):
             #with open(f'{args.data_file}/answer.jsonl', 'r') as file:
             with jsonlines.open(f'{args.data_file}/answer.jsonl') as file:
                 self.data = list(file)
-        elif args.data_type =='img':
-            import jsonlines
-
-            # 打开并读取 JSON 文件
-            #with open(f'{args.data_file}/answer.jsonl', 'r') as file:
-            with jsonlines.open(f'{args.data_file}/answer.jsonl') as file:
-                self.data = list(file)
-        elif args.data_type=='hf_img':
-            import jsonlines
-            # with open(f'{args.data_file}/chat.json', 'r', encoding='utf-8') as file:
-            #     self.data = json.load(file)          
-            with jsonlines.open(f'{args.data_file}/chat.jsonl') as file:
-                self.data = list(file)
         elif args.data_type=='visual':
             import jsonlines
             # with open(f'{args.data_file}/chat.json', 'r', encoding='utf-8') as file:
             #     self.data = json.load(file)          
             with jsonlines.open(f'{args.data_file}/chat.jsonl') as file:
                 self.data = list(file)
+        elif args.data_type == 'arrow':
+            from datasets import load_from_disk, concatenate_datasets, load_dataset
+            import os
+            
+            # 获取主目录下所有子目录
+            subdirs = [os.path.join(args.data_file, d) for d in os.listdir(args.data_file) 
+                    if os.path.isdir(os.path.join(args.data_file, d))]
+            
+            if subdirs:
+                # 加载每个子目录的数据集
+                datasets = [load_from_disk(subdir) for subdir in subdirs]
+                # 连接所有数据集
+                self.data = concatenate_datasets(datasets)
+                print(f"已连接{len(datasets)}个子目录的数据集，总大小: {len(self.data)}")
+            else:
+                # 如果没有子目录，直接加载主目录
+                self.data = load_from_disk(args.data_file)
+                print(self.data[0])
+                print(f"从单一目录加载数据集，大小: {len(self.data)}")
         elif args.data_type =='hf' or args.data_type =='qa' or args.data_type =='cnqa' or args.data_type =='cnasr' or args.data_type =='tts':
             from datasets import load_dataset, concatenate_datasets
 
@@ -230,105 +224,17 @@ class WorldDataset(Dataset):
             img_name = self.data[idx]['image']
             conversation_text = self.data[idx]['conversations']
 
-            mod_path = f'{args.data_file}/images/{img_name}' 
+            mod_path = f'{args.data_file}/{img_name}' 
             image = Image.open(mod_path).convert('RGB')
             sign = image
             text_tokens, text_labels = process_tokens(conversation_text)
+        elif args.data_type == 'arrow':
+
+            sample = self.data[idx]
+            image = sample['image']
+            conversation_text = sample['conversations']
+            sign = image.convert('RGB')
+            text_tokens, text_labels = process_tokens(conversation_text)
+
+
         return sign, text_tokens, text_labels
-        # if args.data_type =='wav':
-
-        #     mod_name = self.data[idx]['file_name']
-        #     data_answer = self.data[idx]['answer']
-        #     mod_path = f'{args.data_file}/{mod_name}'
-        #     audio, sample_rate = librosa.load(mod_path, sr=16000)  # sr=None 保持原采样率
-        #     #sign,_ = self.speech_encoder(audio)
-        #     sign = audio
-        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        # elif args.data_type =='hf':
-        #     sample = self.data[idx]
-        #     audio = sample['audio']
-        #     data_answer = sample['text'] #####caption
-        #     audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-        #     sign = audio
-        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        # elif args.data_type =='tts':
-        #     sample = self.data[idx]
-        #     audio = sample['audio']
-        #     data_answer = sample['text'] #####caption
-        #     audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-        #     sign = audio
-        #     token = torch.tensor(pipeline.encode(f'User: {data_answer}\x17Assistant:'))
-        # elif args.data_type =='qa':
-        #     sample = self.data[idx]
-        #     # audio = sample['speech_cosy'][0]
-        #     # data_answer = sample['answer'] 
-
-        #     audio = sample['question_audio']
-        #     data_answer = sample['answer']
-        #     sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-
-        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        # elif args.data_type =='cnqa':
-        #     sample = self.data[idx]
-        #     audio = sample['audio']
-        #     data_answer = sample['answer']
-        #     sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        # elif args.data_type =='cnasr':
-        #     sample = self.data[idx]
-        #     audio = sample['audio']
-        #     data_answer = sample['transcript']
-        #     sign = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        # elif args.data_type == "jsonl":
-        #     ctx_len = args.ctx_len
-        #     req_len = ctx_len + 1
-        #     ctx = self.data[idx]['text']
-        #     token = torch.tensor(pipeline.encode(ctx))
-        #     token_len = len(token)
-        #     pad_len = req_len - token_len
-        
-        #     dix = F.pad(token, (0, pad_len), value=0)
-        #     x = dix[:-1]
-        #     y = dix[1:]
-        #     mask = torch.zeros(req_len - 1)
-        #     mask[:token_len - 1] = 1
-        #     return x, y, mask
-        # elif args.data_type == "img":
-
-        #     mod_name = self.data[idx]['file_name']
-        #     data_answer = self.data[idx]['answer']
-        #     mod_path = f'{args.data_file}/{mod_name}'
-        #     token = torch.tensor(pipeline.encode(f'\n\nAssistant: {data_answer}\x17'))
-        #     image = Image.open(mod_path).convert('RGB')
-        #     sign = transform(image)
-        # elif args.data_type == 'visual':
-
-        #     img_name = self.data[idx]['image']
-        #     conversation_text = self.data[idx]['conversations']
-
-        #     mod_path = f'{args.data_file}/images/{img_name}' 
-        #     image = Image.open(mod_path).convert('RGB')
-        #     sign = image
-        #     text_tokens, text_labels = process_tokens(conversation_text)
-        #     return sign, text_tokens, text_labels
-        # elif args.data_type== 'hf_img':
-            
-        #     img_name = self.data[idx]['image']
-        #     conversation_text = self.data[idx]['conversations']
-        #     conversation_text = process_conversation_text(conversation_text)
-
-        #     mod_path = f'{args.data_file}/images/{img_name}' 
-        #     token = torch.tensor(pipeline.encode(conversation_text)) 
-        #     image = Image.open(mod_path).convert('RGB')
-        #     sign = image
-        
-        # else:
-        #     data_audio = bytes_to_audio(self.data['question_audio'][idx]['bytes'])
-        #     data_answer = self.data['answer'][idx]
-        #     audio = librosa.resample(data_audio['array'],orig_sr= 48000,target_sr= 16000)
-        #     #sign,_ = self.speech_encoder(audio)
-        #     sign = audio
-        #     token = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-        # #print(idx, f'Assistant: {data_answer}\x17')
-        # return sign, token
