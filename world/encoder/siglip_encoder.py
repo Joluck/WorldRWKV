@@ -17,7 +17,7 @@ class VisualAdapter(nn.Module):
         self.hidden_dim = hidden_dim
 
         if self.hidden_dim==None:
-            self.hidden_dim = project_dim*2
+            self.hidden_dim = project_dim*4
 
         self.pre_norm = nn.LayerNorm(self.project_dim)
         self.proj = nn.Sequential(
@@ -32,6 +32,19 @@ class VisualAdapter(nn.Module):
         #     nn.GELU(),
         #     nn.Linear(self.hidden_dim, self.project_dim),
         # )
+    #     self.conv = nn.Conv1d(
+    #             in_channels=encoder_dim,
+    #             out_channels=encoder_dim,
+    #             bias=False,
+    #             kernel_size=3,
+    #             stride=2
+    #     )
+
+    
+        # def forward(self, x):
+        #     x = self.conv(x.permute(0,2,1)).permute(0,2,1)
+        #     x = self.proj(x)
+        #     return x + self.pre_norm(x)
 
     
     def forward(self, x):        
