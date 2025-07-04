@@ -8,4 +8,5 @@ export OPENAI_API_BASE="http://192.168.0.18:8811/v1"
 python3 -m lmms_eval \
     --model openai_compatible \
     --tasks mme \
-    --batch_size 1
+    --batch_size 1 \
+    --output_path ./results
