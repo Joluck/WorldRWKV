@@ -19,7 +19,7 @@ if importlib.util.find_spec('deepspeed'):
 from .block import Block
 from .loss import L2Wrap
 from .cat import mod_pad_text
-
+from .utils import convert_vision_tensor
 
 class RWKV(pl.LightningModule):
     def __init__(self, args, modality=None):
@@ -51,7 +51,14 @@ class RWKV(pl.LightningModule):
         # assert T <= args.ctx_len, "Cannot forward, model ctx_len is exhausted."
 
         x_list = []
-        if signs!=None:
+        if args.encoder_type=='siglip':
+            image_mask = idx == 65532
+            x = self.emb(idx)
+            image_mask = image_mask.unsqueeze(-1).expand_as(x).to(x.device)
+            image_emb = torch.cat(signs, dim=0)
+            x = x.masked_scatter(image_mask, image_emb)
+           
+        elif signs!=None:
             for token, sign in zip(idx, signs):
                 sign_emb = sign#self.adapter(sign)
                 x_emb = self.emb(token)
@@ -81,9 +88,12 @@ class RWKV(pl.LightningModule):
 
         
         signs, text_tokens, text_labels = batch
-        sign, idx, targets = mod_pad_text(self, signs, text_tokens, text_labels)
+        if args.encoder_type == 'siglip':
+            signs, idx, targets = convert_vision_tensor(self, signs), torch.stack(text_tokens, dim=0).cuda(), torch.stack(text_labels, dim=0).cuda()
+        else:
+            signs, idx, targets = mod_pad_text(self, signs, text_tokens, text_labels)
 
-        logits = self(idx,sign)
+        logits = self(idx, signs)
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
 
         return loss

@@ -9,8 +9,8 @@ from PIL import Image
 import uvicorn
 from infer.worldmodel import Worldinfer
 import time
-llm_path = "/home/rwkv/model/619-1.5/step2/rwkv-0"
-encoder_path = "/home/rwkv/model/siglip2basep16s384"
+llm_path = "/home/rwkv/JL/out_model/worldrwkv-0.4b/step2/rwkv-0"
+encoder_path = "/home/rwkv/models/siglip2"
 encoder_type = 'siglip'
 
 current_state = None
@@ -113,7 +113,7 @@ async def chat_completions(request: ChatCompletionRequest):
         if image is None:
             raise HTTPException(status_code=400, detail="Image is required")
 
-        prompt = f'\x16User: {user_input}\x17Assistant:'
+        prompt = f'<|vision_end|>\x16User: {user_input}\x17Assistant:'
 
         # if first_question and image is not None:
         #     result, state = model.generate(prompt, image, state=None)
@@ -176,7 +176,7 @@ async def health_check():
 if __name__ == "__main__":
     uvicorn.run(
         app,
-        host="192.168.0.xx",
-        port=8811,
+        host="192.168.0.82",
+        port=8000,
         log_level="debug"
     )
