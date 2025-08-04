@@ -1,17 +1,27 @@
 
-from torchvision import transforms
+# from torchvision import transforms
 import torch
 import io
-import soundfile as sf
+# import soundfile as sf
 import numpy as np
 from infer.rwkv.utils import PIPELINE
 pipeline = PIPELINE('rwkv', "rwkv_vocab_v20230424")
 import torch.nn.functional as F
 
-transform = transforms.Compose([
-    transforms.Resize((512, 512)),
-    transforms.ToTensor()  # 将图像转换为张量
-])
+# transform = transforms.Compose([
+#     transforms.Resize((512, 512)),
+#     transforms.ToTensor()  # 将图像转换为张量
+# ])
+def check_vision_token(conversations):
+    for conv in conversations:
+        role = conv.get('from', '').lower()
+        content = conv.get('value', '')
+        if role in ['user','human']:
+            question = f"\x16User: {content}\x17"
+        elif role in ['assistant', 'gpt']:
+            answer = f"\x16Assistant: {content}\x17"    
+    return question, answer
+
 
 def process_vision_token(conversations, max_length=2048, img_tokens=576):
     inputs = []
@@ -191,7 +201,7 @@ def load_vision_text(data_file):
 
     # 根据扩展名选择加载函数
     if ext == '.json':
-        data = read_and_merge_json(f'{data_file}/text/*.json')
+        data = read_and_merge_json(f'{data_file}/text')
     elif ext == '.jsonl':
         data = load_jsonl_files(f'{data_file}/text/*.jsonl')
     else:

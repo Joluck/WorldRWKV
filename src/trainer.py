@@ -93,6 +93,7 @@ class train_callback(pl.Callback):
                         name=args.run_name + " " + args.my_timestamp,
                         config=args,
                         save_code=False,
+                        mode="offline"
                     )
                     trainer.my_wandb = wandb
 
