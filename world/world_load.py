@@ -1,30 +1,21 @@
-from world.model import RWKV
+from world.model import ModRWKV
 from world.world_encoder import WorldEncoder
+import torch
+from collections import OrderedDict
+
 def WorldLoading(args):
-    config = {
-        'encoder_type': args.encoder_type,
-        'encoder_path': args.encoder_path,
-        'project_dim' : args.n_embd
-        }
-    modality = WorldEncoder(**config)
-    
-    model = RWKV(args, modality=modality)
+
+    model = ModRWKV(args)
+    model._set_trainable()
     #model = RWKV(args)
     print(model)
+    print(f"########## Loading {args.load_model}... ##########")
+    state_dict = torch.load(args.load_model, map_location="cpu", weights_only=True)
+    new_state_dict = {
+        f"llm.{k}" if not k.startswith('llm.') else k: v
+        for k, v in state_dict.items()
+        if not (k.startswith('proj.') or k.startswith('encoder.'))
+    }
+    model.load_state_dict(new_state_dict, strict=False)
 
-    if 'moda' not in args.train_step:
-        for param in model.modality.world_encoder.model.parameters():
-            param.requires_grad = False
-    if 'adapter' not in args.train_step:
-        for param in model.modality.world_encoder.adapter.parameters():
-            param.requires_grad = False
-    if 'rwkv' not in args.train_step:
-        for param in model.emb.parameters():
-            param.requires_grad = False
-        for param in model.blocks.parameters():
-            param.requires_grad = False
-        for param in model.ln_out.parameters():
-            param.requires_grad = False
-        for param in model.head.parameters():
-            param.requires_grad = False
     return model

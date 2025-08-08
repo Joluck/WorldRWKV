@@ -14,8 +14,8 @@ os.environ["RWKV_CUDA_ON"] = '1' # '1' to compile CUDA kernel (10x faster), requ
 from infer.rwkv.model import RWKV # pip install rwkv
 from infer.rwkv.utils import PIPELINE, PIPELINE_ARGS
 
+from world.registry import Projector_Registry, Encoder_Registry
 
-from world.world_encoder import WorldEncoder
 
 class Worldinfer():
     def __init__(self, model_path, encoder_type, encoder_path, strategy='cuda bf16', args=None):
@@ -32,14 +32,18 @@ class Worldinfer():
             assert False, "currently rwkv7 strategy must be: cuda/cpu fp16/fp32/bf16"
         
         self.model_weight = torch.load(model_path + '.pth', map_location=DEVICE)
-        modality_dict = {}
+        proj_dict = {}
+        llm_dict = {}
         for key, value in self.model_weight.items():
             if 'emb.weight' in key:
                 _, n_embd = value.shape
-            if 'modality' in key:
-                k = key.replace('modality.world_encoder.', '')
-                modality_dict[k] = value 
-        model = RWKV(model=self.model_weight, strategy=strategy)
+            if key.startswith('proj.'):
+                k = key.replace('proj.', '', 1) 
+                proj_dict[k] = value 
+            elif key.startswith('llm.'):
+                k = key.replace('llm.', '', 1)
+                llm_dict[k] = value 
+        model = RWKV(model=llm_dict, strategy=strategy)
         self.pipeline = PIPELINE(model, "rwkv_vocab_v20230424")
 
         if args==None:
@@ -54,19 +58,20 @@ class Worldinfer():
         print('RWKV finish!!!')
 
         config = {
-            'encoder_type': encoder_type,
             'encoder_path': encoder_path,
             'project_dim' : n_embd
         }
-        self.modality = WorldEncoder(**config).to('cuda', torch.bfloat16)        
-        self.modality.load_checkpoint(modality_dict)
+        self.modality = Encoder_Registry[encoder_type] (**config).to('cuda', self.DTYPE)        
+        proj_config = {
+            'encoder_dim': 768,
+            'project_dim': n_embd
+        }
+        self.proj = Projector_Registry[encoder_type] (**proj_config).to('cuda', self.DTYPE)    
+        self.proj.load_state_dict(proj_dict)
 
-
-    def generate(self, text, modality='none', state=None):
-        if isinstance(modality, str):
-            y=None
-        else:
-            y = self.modality(modality).to(self.DTYPE)
-        result, state = self.pipeline.generate(text, token_count=500, args=self.args, callback=None, state=state, sign=y)
+    def generate(self, text, modality=None, state=None):
+        if modality is not None:
+            modality = self.proj(self.modality(modality))
+        result, state = self.pipeline.generate(text, token_count=500, args=self.args, callback=None, state=state, sign=modality)
         return result, state
 

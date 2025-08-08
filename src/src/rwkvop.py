@@ -19,7 +19,17 @@ def RUN_CUDA_RWKV6_STATE():
 def RUN_CUDA_RWKV5():
     raise NotImplementedError('RUN_CUDA_RUN_KV not implemented')
 
+from rwkvfla.ops.rwkv7 import chunk_rwkv7
 
+def RUN_RWKV7_STATE(r, k, v, w, a, b, s, HEAD_SIZE=64): # for State-tuning, infctx
+    B,T,HC = w.shape
+    C = HEAD_SIZE
+    H = HC//C
+    s = s.transpose(1, 2)
+    r,w,k,v,a,b = [i.view(B,T,H,C) for i in [r,w,k,v,a,b]]
+    # when use w=, -exp(w) is not needed, w=-torch.exp(w), otherwise, use log_w = -torch.exp(w)
+    o, state = chunk_rwkv7(r=r, w=w, k=k, v=v, a=a, b=b, scale=1.0, initial_state=s, output_final_state=True, head_first=False)
+    return o, state
 if os.environ["WKV"] == 'fla':
     from fla.ops.rwkv6 import chunk_rwkv6
     if 'x060' in os.environ["RWKV_MY_TESTING"]:

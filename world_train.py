@@ -132,7 +132,8 @@ def rwkv_train():
 
     parser.add_argument("--lr_schedule", default="cos", type=str)        #['cos', 'wsd']
 
-    
+    parser.add_argument("--op", default="cuda", type=str)
+
     #World
     parser.add_argument("--encoder_path", default="", type=str)  # full path, with .pth
     parser.add_argument("--encoder_type", default="", type=str)  # full path, with .pth
@@ -183,12 +184,12 @@ def rwkv_train():
     os.environ["RWKV_HEAD_SIZE_A"] = str(args.head_size_a)
     ######state tuning
     os.environ["RWKV_TRAIN_TYPE"]=''
-    if args.train_type=='state':
-        os.environ["RWKV_TRAIN_TYPE"]='states'
+    if args.train_type=='state' or args.encoder_type=='state':
+        os.environ["RWKV_TRAIN_TYPE"]='state'
     elif args.train_type=='infctx':
         os.environ["RWKV_TRAIN_TYPE"]='infctx'
 
-    os.environ["WKV"]='fla' if args.fla else ''
+    os.environ["WKV"]= args.op
     if args.dim_att <= 0:
         args.dim_att = args.n_embd
     if args.dim_ffn <= 0:
@@ -267,16 +268,11 @@ def rwkv_train():
     ########################################################################################################
 
     from src.trainer import train_callback
-    from world.model import RWKV
     from world.dataset import WorldDataset
     from world.world_load import WorldLoading
 
     model = WorldLoading(args)
 
-
-    rank_zero_info(f"########## Loading {args.load_model}... ##########")
-    model.load_state_dict(torch.load(
-        args.load_model, map_location="cpu", weights_only=True), strict=False)
 
 
     if pl.__version__[0]=='2':
@@ -319,16 +315,7 @@ def rwkv_train():
     else:
         shuffle = False
 
-    # if args.data_type == "jsonl":
-    #         train_data = DataLoader(
-    #         train_data,
-    #         shuffle=shuffle,
-    #         pin_memory=True,
-    #         batch_size=args.micro_bsz,
-    #         num_workers=1,
-    #         persistent_workers=False,
-    #         drop_last=True,
-    #     )
+        
     train_data = DataLoader(
         train_data,
         shuffle=shuffle,

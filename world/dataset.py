@@ -6,12 +6,11 @@ from PIL import Image
 import json, jsonlines
 import pandas as pd
 import librosa
-import os
 from .utils import pipeline, process_tokens, bytes_to_audio, process_vision_token, read_and_merge_json, load_jsonl_files, load_vision_text
 
-import PIL.PngImagePlugin
-# 增加MAX_TEXT_CHUNK的大小，默认是1MB，可以设置为更大的值，例如10MB
-PIL.PngImagePlugin.MAX_TEXT_CHUNK = 10 * 1024 * 1024
+# import PIL.PngImagePlugin
+# # 增加MAX_TEXT_CHUNK的大小，默认是1MB，可以设置为更大的值，例如10MB
+# PIL.PngImagePlugin.MAX_TEXT_CHUNK = 10 * 1024 * 1024
 
 
 
@@ -41,7 +40,7 @@ class WorldDataset(Dataset):
             #with open(f'{args.data_file}/answer.jsonl', 'r') as file:
             with jsonlines.open(f'{args.data_file}/answer.jsonl') as file:
                 self.data = list(file)
-        elif args.data_type=='img': 
+        elif args.data_type=='img' or args.data_type == 'state': 
             self.data = load_vision_text(args.data_file)
             print('datasets numbers:', len(self.data))
         elif args.data_type == 'arrow':
@@ -66,7 +65,6 @@ class WorldDataset(Dataset):
             from datasets import load_dataset, concatenate_datasets
 
             def list_subdirectories(base_path):
-                import os
                 return [
                     name for name in os.listdir(base_path)
                     if os.path.isdir(os.path.join(base_path, name)) and not name.startswith('.')
@@ -116,14 +114,12 @@ class WorldDataset(Dataset):
             sign = audio
             text_tokens = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
             text_labels = text_tokens
-        elif args.data_type == 'img':
+        elif args.data_type == 'img' or args.data_type == 'state':
             img_name = self.data[idx]['image']
             conversation_text = self.data[idx]['conversations']
             mod_path = f'{args.data_file}/data/{img_name}' 
             sign = Image.open(mod_path).convert('RGB')
             text_tokens, text_labels = process_vision_token(conversation_text)
-            
-
         elif args.data_type == 'arrow':
             sample = self.data[idx]
             image = sample['image']

@@ -9,7 +9,7 @@ from PIL import Image
 import uvicorn
 from infer.worldmodel import Worldinfer
 import time
-llm_path = "/home/rwkv/JL/out_model/worldrwkv-0.4b/step2/rwkv-0"
+llm_path = "/home/rwkv/models/0808test/step2/rwkv-0"
 encoder_path = "/home/rwkv/models/siglip2"
 encoder_type = 'siglip'
 

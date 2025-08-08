@@ -16,84 +16,78 @@ if importlib.util.find_spec('deepspeed'):
     import deepspeed
     from deepspeed.ops.adam import DeepSpeedCPUAdam, FusedAdam
     
-from .block import Block
-from .loss import L2Wrap
-from .cat import mod_pad_text
+from src.rwkv7.block import Block
 from .utils import convert_vision_tensor
+from src.rwkv7.model import RWKV7
+from .world_encoder import WorldEncoder
+from .registry import Projector_Registry, Encoder_Registry
 
-class RWKV(pl.LightningModule):
-    def __init__(self, args, modality=None):
+
+class ModRWKV(pl.LightningModule):
+    def __init__(self, args):
         super().__init__()
         self.args = args
-        if not hasattr(args, 'dim_att'):
-            args.dim_att = args.n_embd
-        if not hasattr(args, 'dim_ffn'):
-            args.dim_ffn = args.n_embd * 4
+        encder_config = {
+            'encoder_path': args.encoder_path,
+            'project_dim' : args.n_embd
+        }
+        self.encoder = Encoder_Registry[args.encoder_type](**encder_config)
+        proj_config = {
+            'encoder_dim': 768,
+            'project_dim': args.n_embd
+        }
+        self.proj = Projector_Registry[args.encoder_type] (**proj_config)
 
-        assert args.n_embd % 32 == 0
-        assert args.dim_att % 32 == 0
-        assert args.dim_ffn % 32 == 0
+        self.llm = RWKV7(args)
+    def get_input_embeddings(self):
+        return self.llm.get_input_embeddings()
 
-        self.emb = nn.Embedding(args.vocab_size, args.n_embd)
+    def set_input_embeddings(self, value):
+        self.llm.set_input_embeddings(value)
+    def _set_trainable(self):
+        # 1) freeze
+        for p in self.parameters():
+            p.requires_grad = False
 
-        self.blocks = nn.ModuleList([Block(args, i) for i in range(args.n_layer)])
+        # 2) 按需解冻
+        part = self.args.train_step
+        if "encoder" in part:
+            for p in self.encoder.parameters():
+                p.requires_grad = True
+        if "proj" in part:
+            for p in self.proj.parameters():
+                p.requires_grad = True
+        if "rwkv" in part:
+            for p in self.llm.parameters():
+                p.requires_grad = True
 
-        self.ln_out = nn.LayerNorm(args.n_embd)
-        self.head = nn.Linear(args.n_embd, args.vocab_size, bias=False)
+    def forward(self, input_ids=None, inputs_embeds=None, signs= None, state = None):
 
-        self.modality = modality
+        if inputs_embeds is None:
+            inputs_embeds = self.get_input_embeddings()(input_ids)
 
-
-
-    def forward(self, idx, signs= None):
-        args = self.args
-        #B, T = idx.size()
-        # assert T <= args.ctx_len, "Cannot forward, model ctx_len is exhausted."
-
-        x_list = []
-        if args.encoder_type=='siglip':
-            image_mask = idx == 65532
-            x = self.emb(idx)
-            image_mask = image_mask.unsqueeze(-1).expand_as(x).to(x.device)
-            image_emb = torch.cat(signs, dim=0)
-            x = x.masked_scatter(image_mask, image_emb)
-           
-        elif signs!=None:
-            for token, sign in zip(idx, signs):
-                sign_emb = sign#self.adapter(sign)
-                x_emb = self.emb(token)
-            # #print(sign_emb.shape, x.shape)
-                x_list.append(torch.cat([sign_emb.squeeze(0),x_emb], dim=0))
-            x = torch.stack(x_list, dim=0)
-        else:
-            x = self.emb(idx)
-
-        v_first = torch.empty_like(x)
-        for block in self.blocks:
-            if args.grad_cp == 1:
-                if args.state_tune or args.train_type == 'state' or args.peft !='none':
-                    x, v_first = torch_checkpoint(block, x, v_first ,use_reentrant=False)
-                else:
-                    x, v_first = deepspeed.checkpointing.checkpoint(block, x, v_first)
+        if signs is not None:
+            images_embeds = torch.cat([self.encoder(v) for v in signs], dim=0)
+            if self.args.encoder_type=='state': 
+                state = self.proj(images_embeds)
+                logits = self.llm(input_ids=input_ids, past_state = state)
             else:
-                x, v_first = block(x, v_first)
-
-        x = self.ln_out(x)
-        x = self.head(x)
-
-        return x
+                image_mask = input_ids == 65532
+                image_mask = image_mask.unsqueeze(-1).expand_as(inputs_embeds).to(inputs_embeds.device)
+                images_embeds = self.proj(images_embeds)
+                inputs_embeds = inputs_embeds.masked_scatter(image_mask, images_embeds)
+                logits = self.llm(inputs_embeds=inputs_embeds)
+        else:
+            logits = self.llm(input_ids=input_ids)
+        return logits
 
     def training_step(self, batch, batch_idx):
         args = self.args
 
         
         signs, text_tokens, text_labels = batch
-        if args.encoder_type == 'siglip':
-            signs, idx, targets = convert_vision_tensor(self, signs), torch.stack(text_tokens, dim=0).cuda(), torch.stack(text_labels, dim=0).cuda()
-        else:
-            signs, idx, targets = mod_pad_text(self, signs, text_tokens, text_labels)
-
-        logits = self(idx, signs)
+        signs, idx, targets =  signs, torch.stack(text_tokens, dim=0).cuda(), torch.stack(text_labels, dim=0).cuda()
+        logits = self(input_ids=idx, signs=signs)
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
 
         return loss
@@ -178,72 +172,3 @@ class RWKV(pl.LightningModule):
             cfg = strategy.config["zero_optimization"]
             return cfg.get("offload_optimizer") or cfg.get("offload_param")
         return False
-
-    def generate_init_weight(self):
-        print(
-            f"""
-############################################################################
-#
-# Init model weight (slow for large models)...
-#
-############################################################################
-"""
-        )
-        m = {}
-        for n in self.state_dict():
-            p = self.state_dict()[n]
-            shape = p.shape
-
-            gain = 1.0
-            scale = 1.0
-            if "ln_" in n or ".ln" in n or "time_" in n or "_mask" in n or "pos_emb" in n or '.mask.' in n:
-                if 'ln_x.weight' in n:
-                    layer_scale = (1+int(n.split('.')[1])) / self.args.n_layer
-                    m[n] = (p * 0.0) + (layer_scale ** 0.7)
-                else:
-                    m[n] = p
-            else:
-                if n == "emb.weight":
-                    scale = -1 * self.args.lr_init
-                else:
-                    if shape[0] > shape[1]:
-                        gain = math.sqrt(shape[0] / shape[1])
-
-                    zero = [".att.output.", ".ffn.value.", ".ffn.receptance.", ".ffnPre.value.", ".ffnPre.receptance.", "head_q.", '.oo.', '.rr.']
-
-                    for kk in zero:
-                        if kk in n:
-                            scale = 0
-                    if n == "head.weight":
-                        scale = 0.5
-                    if "head_k." in n:
-                        scale = 0.1
-                    if "head_q." in n:
-                        scale = 0
-
-                print(f"{str(shape[0]).ljust(5)} {str(shape[1]).ljust(5)} {str(scale).ljust(4)} {n}")
-
-                if self.args.accelerator.upper() == "GPU":
-                    m[n] = torch.empty((shape[0], shape[1]), device="cuda")
-                else:
-                    m[n] = torch.empty((shape[0], shape[1]))
-
-                if scale == 0:
-                    nn.init.zeros_(m[n])
-                elif scale < 0:
-                    nn.init.uniform_(m[n], a=scale, b=-scale)
-                else:
-                    nn.init.orthogonal_(m[n], gain=gain * scale)
-
-            m[n] = m[n].cpu()
-            if os.environ["RWKV_FLOAT_MODE"] == "fp16":
-                m[n] = m[n].half()
-            elif os.environ["RWKV_FLOAT_MODE"] == "bf16":
-                m[n] = m[n].bfloat16()
-
-            # if n == "emb.weight":
-            #     print(m[n])
-
-        gc.collect()
-        torch.cuda.empty_cache()
-        return m

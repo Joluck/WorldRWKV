@@ -88,12 +88,12 @@ class train_callback(pl.Callback):
                 if len(args.wandb) > 0:
                     print("Login to wandb...")
                     import wandb
+                    wandb.init(mode="offline")
                     wandb.init(
                         project=args.wandb,
                         name=args.run_name + " " + args.my_timestamp,
                         config=args,
                         save_code=False,
-                        mode="offline",
                     )
                     trainer.my_wandb = wandb
 
@@ -189,10 +189,10 @@ class train_callback(pl.Callback):
                     to_save_dict = pl_module.state_dict()
                 rwkv_dict={}
                 for k, state in to_save_dict.items():
-                    if k.startswith('encoder.') and 'encoder' not in args.train_step:
+                    if 'world_encoder.model'  in k and 'moda' not in args.train_step:
                         continue
 
-                    if k.startswith('proj.') and 'proj' not in args.train_step:
+                    if 'world_encoder.adapter'  in k and 'adapter' not in args.train_step:
                         continue
                     rwkv_dict[k] = state
                 to_save_dict = rwkv_dict

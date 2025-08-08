@@ -2,9 +2,10 @@ from infer.worldmodel import Worldinfer
 from PIL import Image
 
 
-llm_path='/home/rwkv/model/rwkv7-3b-siglip/rwkv-0'
-encoder_path='/home/rwkv/model/siglip2basep16s384'
-encoder_type='siglip'
+llm_path = "/home/rwkv/models/0808test/step2/rwkv-0"
+encoder_path = "/home/rwkv/models/siglip2"
+encoder_type = 'siglip'
+
 
 model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=encoder_path)
 

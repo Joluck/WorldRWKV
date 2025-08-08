@@ -1,9 +1,9 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
-
 from transformers import AutoModel, SiglipImageProcessor
+
+
 
 class VisualAdapter(nn.Module):
     """
@@ -41,30 +41,3 @@ class VisualAdapter(nn.Module):
         x = self.mlp(x)
         return x + self.pre_norm(x)
 
-
-
-
-
-class SiglipEncoder(nn.Module):
-    
-    def __init__(
-        self,
-        encoder_path,
-        project_dim,
-        train_mode="adapter",
-        device="cuda",) -> None:
-        super(SiglipEncoder, self).__init__()
-
-        
-        self.device = device
-        self.model = AutoModel.from_pretrained(encoder_path).vision_model
-        self.image_processor = SiglipImageProcessor.from_pretrained(encoder_path)
-        self.encoder_dim = 768  #self.model.config.hidden_size
-
-        # self.adapter = VisualAdapter(self.encoder_dim, project_dim)
-    def forward(self, x):
-
-        x= torch.from_numpy(self.image_processor(x)['pixel_values'][0]).to(self.device,dtype=torch.bfloat16)
-        x = self.model(x.unsqueeze(0), output_hidden_states=True).last_hidden_state
-        # x = self.adapter(x)
-        return x
