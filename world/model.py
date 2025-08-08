@@ -16,10 +16,8 @@ if importlib.util.find_spec('deepspeed'):
     import deepspeed
     from deepspeed.ops.adam import DeepSpeedCPUAdam, FusedAdam
     
-from src.rwkv7.block import Block
-from .utils import convert_vision_tensor
+
 from src.rwkv7.model import RWKV7
-from .world_encoder import WorldEncoder
 from .registry import Projector_Registry, Encoder_Registry
 
 

@@ -1,5 +1,4 @@
 from world.model import ModRWKV
-from world.world_encoder import WorldEncoder
 import torch
 from collections import OrderedDict
 
