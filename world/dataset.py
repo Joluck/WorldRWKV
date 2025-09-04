@@ -8,9 +8,9 @@ import pandas as pd
 import librosa
 from .utils import pipeline, process_tokens, bytes_to_audio, process_vision_token, read_and_merge_json, load_jsonl_files, load_vision_text
 
-# import PIL.PngImagePlugin
-# # 增加MAX_TEXT_CHUNK的大小，默认是1MB，可以设置为更大的值，例如10MB
-# PIL.PngImagePlugin.MAX_TEXT_CHUNK = 10 * 1024 * 1024
+import PIL.PngImagePlugin
+# 增加MAX_TEXT_CHUNK的大小，默认是1MB，可以设置为更大的值，例如10MB
+PIL.PngImagePlugin.MAX_TEXT_CHUNK = 10 * 1024 * 1024
 
 
 
@@ -43,6 +43,8 @@ class WorldDataset(Dataset):
         elif args.data_type=='img' or args.data_type == 'state': 
             self.data = load_vision_text(args.data_file)
             print('datasets numbers:', len(self.data))
+            self.data = self.data * args.copy       # <== 复制
+            print('copy datasets numbers:', len(self.data))
         elif args.data_type == 'arrow':
             from datasets import load_from_disk, concatenate_datasets, load_dataset
             import os

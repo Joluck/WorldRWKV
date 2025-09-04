@@ -114,7 +114,6 @@ class RWKV7_TMIX(nn.Module):
         return xr, xw, xk, xv, xa, xg
     
 
-    @torch.compile
     def forward(
         self, 
         x, 

@@ -22,7 +22,7 @@ class RWKV7_CMIX(nn.Module):
         # !!! initialize if you are using RWKV_Tmix_x070 in your code !!!
         # self.key.weight.data.uniform_(-0.5/(args.n_embd**0.5), 0.5/(args.n_embd**0.5))
         # self.value.weight.data.zero_()
-    @torch.compile
+    # @torch.compile
     def forward(self, x, attention_mask=None):
         if attention_mask is not None:
             x = x.mul(attention_mask[:, -x.shape[-2]:, None])

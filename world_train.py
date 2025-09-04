@@ -137,6 +137,8 @@ def rwkv_train():
     #World
     parser.add_argument("--encoder_path", default="", type=str)  # full path, with .pth
     parser.add_argument("--encoder_type", default="", type=str)  # full path, with .pth
+    parser.add_argument("--copy", default=1, type=int)
+
     if pl.__version__[0]=='2':
         parser.add_argument("--accelerator", default="gpu", type=str)
         parser.add_argument("--strategy", default="auto", type=str)
@@ -177,6 +179,9 @@ def rwkv_train():
     args.check_val_every_n_epoch = int(1e20)
     args.log_every_n_steps = int(1e20)
     args.max_epochs = args.epoch_count
+
+    args.epoch_steps = args.epoch_steps*args.copy
+
     args.betas = (args.beta1, args.beta2)
     args.real_bsz = int(args.num_nodes) * int(args.devices) * args.micro_bsz
     os.environ["RWKV_MY_TESTING"] = args.my_testing

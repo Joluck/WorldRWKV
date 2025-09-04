@@ -3,8 +3,8 @@ from infer.worldmodel import Worldinfer
 from PIL import Image
 import re
 # 初始化模型
-llm_path = '/home/alic-li/RWKV-v7/world_weights/rwkv-0'
-encoder_path = '/home/alic-li/RWKV-v7/siglip2-base-patch16-384/'
+llm_path = "/DATA/disk1/outmodel/150623/step4/rwkv-0"
+encoder_path = "/home/model/siglip"
 encoder_type = 'siglip'
 
 # 全局变量存储当前上传的图片和模型状态
@@ -68,7 +68,7 @@ def chat_fn(user_input, chat_history, image=None):
             final_response += "Answer 💡"
             final_response += "\n"
             final_response += html.escape(match)
-        
+        print(final_response)
         # 转义HTML标签
         bot_response = final_response
         
