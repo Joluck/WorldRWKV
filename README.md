@@ -94,7 +94,7 @@ n_embd=2560
 
 encoder_path="google/siglip2-base-patch16-384" #chose your own encoder model
 encoder_type=siglip # Register encoder model in worldencoder
-data_type=hf_img 
+data_type=arrow
 
 micro_bsz=32
 epoch_save=1
@@ -110,10 +110,10 @@ HF_ENDPOINT="https://hf-mirror.com" python world_train.py \   # 中国用户使�
 --n_layer $n_layer --n_embd $n_embd \
 --ctx_len $ctx_len --micro_bsz $micro_bsz \
 --epoch_steps $epoch_steps --epoch_count 1 --epoch_begin 0 --epoch_save $epoch_save \
---lr_init 1e-3 --lr_final 0 --warmup_steps 0 --beta1 0.9 --beta2 0.99 --adam_eps 1e-8 \
+--lr_init 1e-3 --lr_final 0 --warmup_steps 0 \
 --accelerator gpu --devices 8 --precision bf16 --strategy deepspeed_stage_1 --grad_cp 1 \
 --encoder_path $encoder_path --encoder_type $encoder_type \
---my_testing "x070" --train_step adapter rwkv #train_step 选择你要训练的部分，adapter、rwkv
+--my_testing "x070" --train_step proj rwkv #train_step 选择你要训练的部分，proj、rwkv
 ```
 
 ## Web-demo (Using Gradio)
