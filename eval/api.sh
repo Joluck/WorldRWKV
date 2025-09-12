@@ -1,6 +1,6 @@
 python -m infer.server \
-    --host 36.103.167.134 \
+    --host 192.168.0.106 \
     --port 8000 \
-    --llm_path /home/outmodel/datarule-0.4b/step2/rwkv-0 \
-    --encoder_path /home/model/siglip\
-    --encoder_type state
+    --llm_path /home/rwkv/models/see/rwkv-0 \
+    --encoder_path /home/rwkv/models/siglip2 \
+    --encoder_type siglip

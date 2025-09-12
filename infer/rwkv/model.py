@@ -294,6 +294,29 @@ class RWKV(MyModule):
         z['blocks.0.att.v1'] = z['blocks.0.att.a1'] # actually ignored
         z['blocks.0.att.v2'] = z['blocks.0.att.a2'] # actually ignored
 
+    def get_placeholder_mask(
+        self, input_ids: torch.LongTensor, inputs_embeds: torch.FloatTensor, image_features: torch.FloatTensor
+    ):
+        """
+        Obtains multimodal placeholder mask from `input_ids` or `inputs_embeds`, and checks that the placeholder token count is
+        equal to the length of multimodal features. If the lengths are different, an error is raised.
+        """
+        if input_ids is None:
+            special_image_mask = inputs_embeds == self.get_input_embeddings()(
+                torch.tensor(65532, dtype=torch.long, device=inputs_embeds.device)
+            )
+            special_image_mask = special_image_mask.all(-1)
+        else:
+            special_image_mask = input_ids == 65532
+        n_image_tokens = special_image_mask.sum()
+        special_image_mask = special_image_mask.unsqueeze(-1).expand_as(inputs_embeds).to(inputs_embeds.device)
+        if inputs_embeds[special_image_mask].numel() != image_features.numel():
+            n_image_features = image_features.shape[0] * image_features.shape[1]
+            raise ValueError(
+                f"Image features and image tokens do not match: tokens: {n_image_tokens}, features {n_image_features}"
+            )
+        return special_image_mask
+
     def forward(self, idx, state, full_output=False, sign=None):
         if state == None:
             state = [None for _ in range(self.args.n_layer * 3)]
@@ -304,10 +327,11 @@ class RWKV(MyModule):
 
         x = self.z['emb.weight'][idx]
         if isinstance(sign, torch.Tensor):
-            sign = sign.squeeze(0)
+            image_mask = self.get_placeholder_mask(input_ids=torch.tensor(idx), inputs_embeds=x, image_features=sign)
+            sign = sign.view(-1, sign.shape[-1])
             # sign = F.layer_norm(sign, (self.args.n_embd,), weight=self.z['blocks.0.ln0.weight'], bias=self.z['blocks.0.ln0.bias'])
 
-            x = torch.cat((sign,x.to('cuda')), dim=0)
+            x = x.masked_scatter(image_mask, sign)
 
         x = F.layer_norm(x, (self.args.n_embd,), weight=self.z['blocks.0.ln0.weight'], bias=self.z['blocks.0.ln0.bias'])
         # if isinstance(sign, torch.Tensor):

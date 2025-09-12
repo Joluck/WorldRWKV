@@ -44,7 +44,7 @@ class Worldinfer():
                 k = key.replace('llm.', '', 1)
                 llm_dict[k] = value 
         model = RWKV(model=llm_dict, strategy=strategy)
-        self.pipeline = PIPELINE(model, "rwkv_vocab_v20230424")
+        self.pipeline = PIPELINE(model, "wr_vocab_v20230424")
 
         if args==None:
             self.args = PIPELINE_ARGS(temperature = 1.0, top_p = 0.0, top_k=0, # top_k = 0 then ignore
@@ -52,7 +52,7 @@ class Worldinfer():
                                 alpha_presence = 0.0,
                                 token_ban = [0], # ban the generation of some tokens
                                 token_stop = [24], # stop generation whenever you see any token here
-                                chunk_len = 256) # split input into chunks to save VRAM (shorter -> slower)
+                                chunk_len = 1024) # split input into chunks to save VRAM (shorter -> slower)
         else:
             self.args=args
         print('RWKV finish!!!')
@@ -69,9 +69,40 @@ class Worldinfer():
         self.proj = Projector_Registry[encoder_type] (**proj_config).to('cuda', self.DTYPE)    
         self.proj.load_state_dict(proj_dict)
 
+    def process_wr(self, text, image = None):
+        content = ''
+        if image is not None:
+            for i in range(len(image)):
+                replacement = (
+                            "<|vision_start|>"
+                            + f"<|image_pad|>" * 576
+                            + "<|vision_end|>"
+                )
+                content+=replacement
+        content = f'\x16User:{content}{text}\x17\x16Assistant:'
+        return content
     def generate(self, text, modality=None, state=None):
         if modality is not None:
             modality = self.proj(self.modality(modality))
+            
+        text = self.process_wr(text, modality)
         result, state = self.pipeline.generate(text, token_count=500, args=self.args, callback=None, state=state, sign=modality)
         return result, state
 
+
+# def process_wr(text, image = None):
+#     content = ''
+#     if image is not None:
+#         for i in range(len(image)):
+#             replacement = (
+#                         "<|vision_start|>"
+#                         + f"<|vision_pad|>" * 3
+#                         + "<|vision_end|>"
+#             )
+#             content+=replacement
+#     content = f'\x16User: {content}{text}\x17\x16Assistant:'
+#     return content
+# text= 'who are you'
+# tt = process_wr(text, [1,2])
+# print(tt.split("<image>"))
+# print(tt)

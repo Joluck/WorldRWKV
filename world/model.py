@@ -25,11 +25,12 @@ class ModRWKV(pl.LightningModule):
     def __init__(self, args):
         super().__init__()
         self.args = args
-        encder_config = {
+        self.image_token_id = 65532
+        encoder_config = {
             'encoder_path': args.encoder_path,
             'project_dim' : args.n_embd
         }
-        self.encoder = Encoder_Registry[args.encoder_type](**encder_config)
+        self.encoder = Encoder_Registry[args.encoder_type](**encoder_config)
         proj_config = {
             'encoder_dim': 768,
             'project_dim': args.n_embd
@@ -42,6 +43,30 @@ class ModRWKV(pl.LightningModule):
 
     def set_input_embeddings(self, value):
         self.llm.set_input_embeddings(value)
+
+    def get_placeholder_mask(
+        self, input_ids: torch.LongTensor, inputs_embeds: torch.FloatTensor, image_features: torch.FloatTensor
+    ):
+        """
+        Obtains multimodal placeholder mask from `input_ids` or `inputs_embeds`, and checks that the placeholder token count is
+        equal to the length of multimodal features. If the lengths are different, an error is raised.
+        """
+        if input_ids is None:
+            special_image_mask = inputs_embeds == self.get_input_embeddings()(
+                torch.tensor(self.image_token_id, dtype=torch.long, device=inputs_embeds.device)
+            )
+            special_image_mask = special_image_mask.all(-1)
+        else:
+            special_image_mask = input_ids == self.image_token_id
+
+        n_image_tokens = special_image_mask.sum()
+        special_image_mask = special_image_mask.unsqueeze(-1).expand_as(inputs_embeds).to(inputs_embeds.device)
+        if inputs_embeds[special_image_mask].numel() != image_features.numel():
+            n_image_features = image_features.shape[0] * image_features.shape[1]
+            raise ValueError(
+                f"Image features and image tokens do not match: tokens: {n_image_tokens}, features {n_image_features}"
+            )
+        return special_image_mask
     def _set_trainable(self):
         # 1) freeze
         for p in self.parameters():
@@ -58,6 +83,7 @@ class ModRWKV(pl.LightningModule):
         if "rwkv" in part:
             for p in self.llm.parameters():
                 p.requires_grad = True
+    
 
     def forward(self, input_ids=None, inputs_embeds=None, signs= None, state = None):
 
@@ -65,14 +91,18 @@ class ModRWKV(pl.LightningModule):
             inputs_embeds = self.get_input_embeddings()(input_ids)
 
         if signs is not None:
-            images_embeds = torch.cat([self.encoder(v) for v in signs], dim=0)
+            images_embeds = self.encoder(signs)
+            images_embeds = images_embeds.view(-1, images_embeds.shape[-1])
+
             if self.args.encoder_type=='state': 
                 state = self.proj(images_embeds)
                 logits = self.llm(input_ids=input_ids, past_state = state)
             else:
-                image_mask = input_ids == 65532
-                image_mask = image_mask.unsqueeze(-1).expand_as(inputs_embeds).to(inputs_embeds.device)
-                images_embeds = self.proj(images_embeds)
+                images_embeds = self.proj(images_embeds)  # images_embeds need [B*num_imgs,llm_dim]
+                image_mask = self.get_placeholder_mask(
+                    input_ids, inputs_embeds=inputs_embeds, image_features=images_embeds
+                )
+                
                 inputs_embeds = inputs_embeds.masked_scatter(image_mask, images_embeds)
                 logits = self.llm(inputs_embeds=inputs_embeds)
         else:

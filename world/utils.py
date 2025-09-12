@@ -5,7 +5,7 @@ import io
 # import soundfile as sf
 import numpy as np
 from infer.rwkv.utils import PIPELINE
-pipeline = PIPELINE('rwkv', "rwkv_vocab_v20230424")
+pipeline = PIPELINE('rwkv', "wr_vocab_v20230424")
 import torch.nn.functional as F
 
 # transform = transforms.Compose([
@@ -23,25 +23,42 @@ def check_vision_token(conversations):
     return question, answer
 
 
-def process_vision_token(conversations, max_length=2048, img_tokens=576):
+
+
+def process_vision_text(
+    conversations, 
+    tokenizer=None, 
+    image_token_length=None,
+    max_length=2048, 
+    IGNORE_INDEX=-100,
+):
     inputs = []
     labels = []
-
-    replace = (f'<|vision_pad|>'*img_tokens+'<|vision_end|>')
-    image_token = pipeline.encode(replace)
-    image_label = [-100]*len(image_token)
-    inputs += image_token
-    labels += image_label
-
+    visual_replicate_index_image = 0
     for conv in conversations:
         role = conv.get('from', '').lower()
         content = conv.get('value', '')
         if role in ['user','human']:
-            question = f"\x16User: {content}\x17"
+            image = ''
+            if "<image>" in content:
+                parts = content.split("<image>")
+                new_parts = []
+                for i in range(len(parts) - 1):
+                    new_parts.append(parts[i])
+                    replacement = (
+                        "<|vision_start|>"
+                        + f"<|image_pad|>" * image_token_length[visual_replicate_index_image]
+                        + "<|vision_end|>"
+                    )
+                    new_parts.append(replacement)
+                    visual_replicate_index_image += 1
+                new_parts.append(parts[-1])
+                content = "".join(new_parts)
+            question = f"\x16User:{content}\x17"
             input = pipeline.encode(question)
-            label = [-100]*len(input)
+            label = [IGNORE_INDEX]*len(input)
         elif role in ['assistant', 'gpt']:
-            answer = f"\x16Assistant: {content}\x17"
+            answer = f"\x16Assistant:{content}\x17"
             input = pipeline.encode(answer)
             label = input
         inputs += input
@@ -49,72 +66,10 @@ def process_vision_token(conversations, max_length=2048, img_tokens=576):
 
     inputs = torch.tensor(inputs, dtype=torch.long)
     labels = torch.tensor(labels, dtype=torch.long)
-
     pad_length = max_length - len(labels) + 1
     final_input = F.pad(inputs, (0, pad_length), value=0)[:-1]
     final_label = F.pad(labels, (0, pad_length), value=-100)[1:]
     return final_input, final_label
-
-def convert_vision_tensor(self, signs):
-    signal = []
-
-    for sign in signs:
-        signal.append(self.modality(sign).squeeze(0))
-
-
-    return signal
-
-
-# def pad(inputs, labels, max_length):
-#         text_inputs[i] = F.pad(token, (0, pad_len), value=0)[:-1]
-#         text_labels[i] = F.pad(label, (0, pad_len), value=-100)[1:]
-
-
-
-def process_tokens(conversations):
-
-    # image_token = torch.tensor(pipeline.encode('<|vision_end|>'))
-    # image_label = torch.full_like(image_token, -100)
-    # inputs = [image_token]
-    # labels = [image_label]
-    inputs = []
-    labels = []
-
-    for conv in conversations:
-        role = conv.get('from', '').lower()
-        content = conv.get('value', '')
-        
-        if role in ['user','human']:
-            question = f"\x16User: {content}\x17"
-            input = torch.tensor(pipeline.encode(question))
-            label = torch.full_like(input, -100)
-        elif role in ['assistant', 'gpt']:
-            answer = f"\x16Assistant: {content}\x17"
-            input= torch.tensor(pipeline.encode(answer))
-            label = input
-        inputs.append(input)
-        labels.append(label)
-    inputs =torch.cat(inputs)
-    labels =torch.cat(labels)
-    return inputs, labels
-
-def bytes_to_audio(audio_bytes):
-    with io.BytesIO(audio_bytes) as buf:
-        # 使用 soundfile 读取音频数据
-        audio_array, sr = sf.read(buf)
-        
-        # 确保是单声道
-        if len(audio_array.shape) > 1:
-            audio_array = audio_array.mean(axis=1)
-        
-        # 确保是 float32 类型
-        audio_array = audio_array.astype(np.float32)
-        
-        return {
-            'array': audio_array,
-            'sampling_rate': sr
-        }
-    
 
 import json
 import os
@@ -208,25 +163,36 @@ def load_vision_text(data_file):
         raise ValueError(f"Unsupported file type: {ext}. Expected .json or .jsonl")
 
     return data
+if __name__ == "__main__":
+    import jsonlines
+    file_path = '/home/rwkv/data/vision_step2/text/chartqa.jsonl'
+    with jsonlines.open(file_path) as f:
+        data = list(f)
+
+    print(data[0])
+    conversations = data[0]['conversations']
+    it, ot = process_vision_text(conversations, image_token_length=[8,8])
+    print(it)
+    import torch
+
+    B, L, H = 2, 7, 768         # batch=2, seq_len=10, hidden=768
+    device = 'cpu'
+    input_ids = torch.tensor([[2,2,2,1,1,1,1],[1,2,2,3,1,1,1]], dtype=torch.long)
+    # 1.1 文本侧
+    inputs_embeds = torch.zeros(B, L, H, device=device)      # [2, 10, 768]
+
+    image_embeds = torch.randn(5, H, device=device) 
+
+    image_mask = get_placeholder_mask(
+                    input_ids, inputs_embeds=inputs_embeds, image_features=image_embeds
+                )
+    print('smask',image_mask, image_mask.shape)
+
+                      # [2,10] 里 6 个 True
+
+        # 2.1 把图像向量插到文本向量里
+    inputs_embeds_after = inputs_embeds.masked_scatter(image_mask, image_embeds)
 
 
-
-# 使用示例
-# data_list = load_jsonl_files("/home/rwkv/data/vision_step2/text/*.jsonl")
-# print(f"加载了 {len(data_list)} 条数据")
-# # 使用示例
-# if __name__ == "__main__":
-
-#     try:
-#         import time
-#         start_time = time.time()
-
-#         combined_data = read_and_merge_json("/home/rwkv/data/sharept/text")
-#         end_time = time.time()
-#         print(end_time-start_time)
-#         print(f"成功合并了 {len(combined_data)} 条数据")
-        
-
-        
-#     except Exception as e:
-#         print(f"发生错误: {str(e)}")
+    print('inputs_embeds before :', inputs_embeds)     # [2, 10, 768]
+    print('inputs_embeds after  :', inputs_embeds_after)  # [2, 10, 768]

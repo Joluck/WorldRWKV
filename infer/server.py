@@ -8,15 +8,23 @@ from pydantic import BaseModel
 from PIL import Image
 import uvicorn
 from infer.worldmodel import Worldinfer
-import time
-llm_path = "/home/rwkv/models/0808test/step2/rwkv-0"
-encoder_path = "/home/rwkv/models/siglip2"
-encoder_type = 'siglip'
+import argparse
+# llm_path = "/home/rwkv/models/0808test/step2/rwkv-0"
+# encoder_path = "/home/rwkv/models/siglip2"
+# encoder_type = 'siglip'
+parser = argparse.ArgumentParser(description="WorldRWKV API")
+parser.add_argument("--host", type=str, default="127.0.0.1", help="监听地址")
+parser.add_argument("--port", type=int, default=8000, help="监听端口")
+parser.add_argument("--llm_path", type=str, required=True, help="rwkv 模型路径")
+parser.add_argument("--encoder_path", type=str, required=True, help="视觉 encoder 路径")
+parser.add_argument("--encoder_type", type=str, default="siglip", help="encoder 类型")
+args = parser.parse_args()
+template = '<|vision_end|>\x16User: {}\x17\x16Assistant:'
 
 current_state = None
 first_question = False
 
-model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=encoder_path)
+model = Worldinfer(model_path=args.llm_path, encoder_type=args.encoder_type, encoder_path=args.encoder_path)
 
 app = FastAPI(title="WorldRWKV API", version="1.0.0")
 
@@ -113,14 +121,8 @@ async def chat_completions(request: ChatCompletionRequest):
         if image is None:
             raise HTTPException(status_code=400, detail="Image is required")
 
-        prompt = f'<|vision_end|>\x16User: {user_input}\x17Assistant:'
-
-        # if first_question and image is not None:
-        #     result, state = model.generate(prompt, image, state=None)
-        #     first_question = False
-        # else:
-        #     result, state = model.generate(prompt, 'none', state=current_state)
-        result, state = model.generate(prompt, image, state=None)
+        
+        result, state = model.generate(user_input, image, state=None)
         current_state = state
         bot_response = result
 
@@ -176,7 +178,7 @@ async def health_check():
 if __name__ == "__main__":
     uvicorn.run(
         app,
-        host="192.168.0.82",
-        port=8000,
+        host=args.host,
+        port=args.port,
         log_level="debug"
     )

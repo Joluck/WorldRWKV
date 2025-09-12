@@ -63,8 +63,20 @@ class SiglipEncoder(nn.Module):
 
         # self.adapter = VisualAdapter(self.encoder_dim, project_dim)
     def forward(self, x):
-
-        x= torch.from_numpy(self.image_processor(x)['pixel_values'][0]).to(self.device,dtype=torch.bfloat16)
-        x = self.model(x.unsqueeze(0), output_hidden_states=True).last_hidden_state
-        # x = self.adapter(x)
+        x= self.image_processor(x, return_tensors="pt")['pixel_values'].to(self.device,dtype=torch.bfloat16)
+        x = self.model(x, output_hidden_states=True).last_hidden_state
         return x
+
+
+if __name__ == "__main__":
+    from PIL import Image
+    encoder_config = {
+        'encoder_path': '/home/rwkv/models/siglip2',
+        'project_dim' : 768
+    }
+    siglip = SiglipEncoder(**encoder_config)
+    image1 = Image.open('/home/rwkv/data/vision_step2/data/chartqa/train/png/34.png').convert('RGB')
+    image2 = Image.open('/home/rwkv/data/vision_step2/data/chartqa/train/png/43.png').convert('RGB')
+    images = [image1, image2]
+    y = siglip(images)
+    print(y.shape)

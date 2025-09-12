@@ -8,7 +8,7 @@ import torch
 from torch.nn import functional as F
 
 class PIPELINE_ARGS():
-    def __init__(self, temperature=1.0, top_p=0.85, top_k=0, alpha_frequency=0.2, alpha_presence=0.2, alpha_decay=0.996, token_ban=[], token_stop=[], chunk_len=256):
+    def __init__(self, temperature=1.0, top_p=0.85, top_k=0, alpha_frequency=0.2, alpha_presence=0.2, alpha_decay=0.996, token_ban=[], token_stop=[], chunk_len=1024):
         self.temperature = temperature
         self.top_p = top_p
         self.top_k = top_k
@@ -28,7 +28,11 @@ class PIPELINE():
         elif WORD_NAME == 'rwkv_vocab_v20230424':
             sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
             from rwkv_tokenizer import TRIE_TOKENIZER
-            self.tokenizer = TRIE_TOKENIZER(os.path.dirname(os.path.abspath(__file__)) + '/rwkv_vocab_v20230424.txt')        
+            self.tokenizer = TRIE_TOKENIZER(os.path.dirname(os.path.abspath(__file__)) + '/rwkv_vocab_v20230424.txt')    
+        elif WORD_NAME == 'wr_vocab_v20230424':
+            sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+            from rwkv_tokenizer import TRIE_TOKENIZER
+            self.tokenizer = TRIE_TOKENIZER(os.path.dirname(os.path.abspath(__file__)) + '/wr_vocab_v20230424.txt')     
         else:
             from tokenizers import Tokenizer
             self.tokenizer = Tokenizer.from_file(WORD_NAME)
