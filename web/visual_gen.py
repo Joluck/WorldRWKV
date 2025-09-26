@@ -1,19 +1,38 @@
-from infer.worldmodel import Worldinfer
+import torch
 from PIL import Image
+from infer.worldmodel import Worldinfer
 
-
-llm_path = "/home/outmodel/new-1.5b/step4-0831/rwkv-0"
+# =========================
+# 模型路径配置
+# =========================
+llm_path = "/home/outmodel/test-step2/rwkv-0"
 encoder_path = "/home/model/siglip"
 encoder_type = 'siglip'
 
+# =========================
+# 初始化模型
+# =========================
+model = Worldinfer(
+    model_path=llm_path,
+    encoder_type=encoder_type,
+    encoder_path=encoder_path
+)
 
-model = Worldinfer(model_path=llm_path, encoder_type=encoder_type, encoder_path=encoder_path)
-
-img_path = '/home/peter/屏幕截图 2025-09-02 114600.png'
+# =========================
+# 加载图片
+# =========================
+img_path = '/home/peter/test/111.png'
 image = Image.open(img_path).convert('RGB')
 
-text = '\x16User: 请帮我识别图片中的文字\x17\x16Assistant:'
+# =========================
+# 构造 conversation 文本
+# =========================
+question = "请识别图中中文"
+text_input = "<image>" + question
 
-result,_ = model.generate(text, image)
+# =========================
+# 调用模型生成回答
+# =========================
+result, _ = model.generate(text_input, image)
 
-print(result)
+print("生成结果：\n", result)
