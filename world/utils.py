@@ -23,7 +23,31 @@ def check_vision_token(conversations):
     return question, answer
 
 
+def convert_texts_to_conversations(texts):
+    
+    conversations = []
+    try:
+        # 遍历texts中所有的user和assistant问答对
+        for i, text_data in enumerate(texts):
+            if isinstance(text_data, dict) and 'user' in text_data and 'assistant' in text_data:
+                # 确保user和assistant字段不为空
 
+                user_text = text_data.get("user", "").strip()
+                assistant_text = text_data.get("assistant", "").strip()
+
+                if user_text and assistant_text:
+                    # 处理每一轮对话
+                    conversations.append({'from': 'user', 'value': user_text})
+                    conversations.append({'from': 'assistant', 'value': assistant_text})
+        
+        # 给第一个user的value添加<image>标记
+        
+        # 将conversations添加到sample中
+        conversations
+            
+    except Exception as e:
+        print(f"警告: 对话转换失败: {e}")
+    return conversations
 
 def process_vision_text(
     conversations, 
@@ -39,7 +63,6 @@ def process_vision_text(
         role = conv.get('from', '').lower()
         content = conv.get('value', '')
         if role in ['user','human']:
-            image = ''
             if "<image>" in content:
                 parts = content.split("<image>")
                 new_parts = []

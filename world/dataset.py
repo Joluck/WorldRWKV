@@ -116,12 +116,6 @@ class WorldDataset(Dataset):
             sign = audio
             text_tokens = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
             text_labels = text_tokens
-        elif  args.data_type == 'state':
-            img_name = self.data[idx]['image']
-            conversation_text = self.data[idx]['conversations']
-            mod_path = f'{args.data_file}/data/{img_name}' 
-            sign = Image.open(mod_path).convert('RGB')
-            text_tokens, text_labels = process_vision_token(conversation_text)
         elif args.data_type == 'img':
             sample = self.data[idx]
             if not isinstance(sample.get('image'), list):
@@ -135,14 +129,11 @@ class WorldDataset(Dataset):
             input_ids, label_ids = process_vision_text(conversation_text, max_length=args.ctx_len, image_token_length=images_length)
         elif args.data_type == 'arrow':
             sample = self.data[idx]
-            if not isinstance(sample.get('image'), list):
-                image = [sample['image']]
-            else:
-                image = sample['image']
-            mods = [img.convert('RGB') for img in image]
-            images_length = [576]*len(image)
-            conversation_text = sample['conversations']
-            conversation_text[0]['value'] = '<image>' + conversation_text[0]['value']  #need <image> label
+            images = [img.convert('RGB') for img in sample['images']]
+            images_length = [576]*len(images)
+            conversation_text = convert_texts_to_conversations(sample['texts'])
+            for i in range(len(images)):
+                conversation_text[0]['value'] = '<image>' + conversation_text[0]['value']  #need <image> label
             input_ids, label_ids = process_vision_text(conversation_text, max_length=args.ctx_len, image_token_length=images_length)
-           
-        return mods, input_ids, label_ids
+            print('images:', len(images), input_ids)
+        return images, input_ids, label_ids

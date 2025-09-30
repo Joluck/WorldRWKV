@@ -90,7 +90,7 @@ class ModRWKV(pl.LightningModule):
         if inputs_embeds is None:
             inputs_embeds = self.get_input_embeddings()(input_ids)
 
-        if signs is not None:
+        if signs is not None and len(signs)>0:
             images_embeds = self.encoder(signs)
             images_embeds = images_embeds.view(-1, images_embeds.shape[-1])
 
@@ -114,7 +114,7 @@ class ModRWKV(pl.LightningModule):
 
         
         signs, text_tokens, text_labels = batch
-        signs, idx, targets =  signs, torch.stack(text_tokens, dim=0).cuda(), torch.stack(text_labels, dim=0).cuda()
+        signs, idx, targets = [sub for sub in signs if sub] , torch.stack(text_tokens, dim=0).cuda(), torch.stack(text_labels, dim=0).cuda()
         logits = self(input_ids=idx, signs=signs)
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
 

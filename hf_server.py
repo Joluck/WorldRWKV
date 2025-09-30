@@ -7,23 +7,37 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from PIL import Image
 import uvicorn
-from infer.worldmodel import Worldinfer
 import argparse
-# llm_path = "/home/rwkv/models/0808test/step2/rwkv-0"
-# encoder_path = "/home/rwkv/models/siglip2"
-# encoder_type = 'siglip'
+from wlm.encoder.siglip_encoder import SiglipEncoder
+import types
+import torch
+from wlm.processing_wlm import ProcessWLM
+from wlm.modeling_rwkv7_wlm import RWKV7VLForConditionalGeneration  
+
+
+
 parser = argparse.ArgumentParser(description="WorldRWKV API")
 parser.add_argument("--host", type=str, default="127.0.0.1", help="监听地址")
 parser.add_argument("--port", type=int, default=8000, help="监听端口")
 parser.add_argument("--llm_path", type=str, required=True, help="rwkv 模型路径")
-parser.add_argument("--encoder_path", type=str, required=True, help="视觉 encoder 路径")
-parser.add_argument("--encoder_type", type=str, default="siglip", help="encoder 类型")
+
 args = parser.parse_args()
 
 current_state = None
 first_question = False
 
-model = Worldinfer(model_path=args.llm_path, encoder_type=args.encoder_type, encoder_path=args.encoder_path)
+# model = Worldinfer(model_path=args.llm_path, encoder_type=args.encoder_type, encoder_path=args.encoder_path)
+model = RWKV7VLForConditionalGeneration.from_pretrained(args.llm_path, trust_remote_code=True,torch_dtype=torch.bfloat16).eval()
+# tokenizer = AutoTokenizer.from_pretrained('/home/rwkv/JL/g1fla', trust_remote_code=True)
+processor = ProcessWLM(args.llm_path, trust_remote_code=True)
+# 示例配置字典
+config_dict = {'encoder_path': '/home/rwkv/models/siglip2'}
+
+# 将字典转换为对象
+config = types.SimpleNamespace(**config_dict)
+model.model.encoder=  SiglipEncoder(config).to(dtype=torch.bfloat16)
+model = model.cuda()
+
 
 app = FastAPI(title="WorldRWKV API", version="1.0.0")
 
@@ -107,11 +121,28 @@ def process_messages(messages: List[Message]) -> tuple[str, Optional[Image.Image
 
     return text_content, image
 
+def convert_messages(messages_obj):
+    messages_dict = []
+    for msg in messages_obj:
+        images = []
+        texts = []
+        for item in msg.content:
+            if isinstance(item, TextContent):
+                texts.append({"type": "text", "text": item.text})
+            elif isinstance(item, ImageContent):
+                images.append({"type": "image", "image": item.image_url.url})
+        # 图片放前，文本放后
+        content_list = images + texts
+        messages_dict.append({"role": msg.role, "content": content_list})
+    return messages_dict
+
+
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
 async def chat_completions(request: ChatCompletionRequest):
     global current_state, first_question
 
     try:
+        messages = convert_messages(request.messages)
         user_input, image = process_messages(request.messages)
 
         if not user_input:
@@ -119,10 +150,23 @@ async def chat_completions(request: ChatCompletionRequest):
 
         if image is None:
             raise HTTPException(status_code=400, detail="Image is required")
+        text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        images = [[image]]#processor.process_images(messages)
+        inputs = processor(text=text, images=images).to('cuda')
+        generated_ids = model.generate(
+            **inputs,
+            max_new_tokens=512,
+            do_sample=True,
+            temperature=1.0,
+            top_p=0.3,
+            repetition_penalty=1.2
+        )
+        generated_ids = [
+            output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
+        ]
 
-        
-        result, state = model.generate(user_input, image, state=None)
-        current_state = state
+        result = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
+        current_state = None
         bot_response = result
 
         final_response = bot_response
