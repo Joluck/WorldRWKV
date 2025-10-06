@@ -1,10 +1,9 @@
+import os
 import torch
-import lightning as L
 from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
+from datasets import load_dataset, load_from_disk, concatenate_datasets
 from PIL import Image
-import json, jsonlines
-import pandas as pd
+import jsonlines
 import librosa
 from .utils import *
 
@@ -12,128 +11,158 @@ import PIL.PngImagePlugin
 # 增加MAX_TEXT_CHUNK的大小，默认是1MB，可以设置为更大的值，例如10MB
 PIL.PngImagePlugin.MAX_TEXT_CHUNK = 10 * 1024 * 1024
 
-
-
-class GlobalIndexManager:
-    def __init__(self, rank=0, device_num=1, shuffle=True):
-        self.current_idx = 0
-        self.rank = rank
-        self.device_num = device_num
-        self.shuffle = shuffle
-        
-    def get_next_idx(self, idx_t):
-        if self.shuffle:
-            idx = idx_t
-        else:
-            idx = self.current_idx * self.device_num + self.rank 
-            self.current_idx += 1
-        return idx
-
 class WorldDataset(Dataset):
-    def __init__(self, args, emb=None):
+    def __init__(self, args, processor=None):
+        """
+        通用多模态数据集：
+        支持 data_type = ['hf', 'img', 'arrow', 'jsonl', 'wav', 'state']
+        """
         self.args = args
-        self.index_manager = None
-        self.emb = emb
-        if args.data_type =='wav':
+        self.processor = processor
+        self.data_type = args.data_type
 
-            # 打开并读取 JSON 文件
-            #with open(f'{args.data_file}/answer.jsonl', 'r') as file:
-            with jsonlines.open(f'{args.data_file}/answer.jsonl') as file:
-                self.data = list(file)
-        elif args.data_type=='img' or args.data_type == 'state': 
-            self.data = load_vision_text(args.data_file)
-            print('datasets numbers:', len(self.data))
-            self.data = self.data * args.copy       # <== 复制
-            print('copy datasets numbers:', len(self.data))
+        # --- 1. 加载数据 ---
+        if args.data_type == 'hf':
+            self.data = self._load_hf_dataset(args.data_file)
         elif args.data_type == 'arrow':
-            from datasets import load_from_disk, concatenate_datasets, load_dataset
-            import os
-            
-            # 获取主目录下所有子目录
-            subdirs = [os.path.join(args.data_file, d) for d in os.listdir(args.data_file) 
-                    if os.path.isdir(os.path.join(args.data_file, d))]
-            
-            if subdirs:
-                # 加载每个子目录的数据集
-                datasets = [load_from_disk(subdir) for subdir in subdirs]
-                # 连接所有数据集
-                self.data = concatenate_datasets(datasets)
-                print(f"已连接{len(datasets)}个子目录的数据集，总大小: {len(self.data)}")
-            else:
-                # 如果没有子目录，直接加载主目录
-                self.data = load_from_disk(args.data_file)
-                print(f"从单一目录加载数据集，大小: {len(self.data)}")
-        elif args.data_type =='hf' or args.data_type =='qa' or args.data_type =='cnqa' or args.data_type =='cnasr' or args.data_type =='tts':
-            from datasets import load_dataset, concatenate_datasets
-
-            def list_subdirectories(base_path):
-                return [
-                    name for name in os.listdir(base_path)
-                    if os.path.isdir(os.path.join(base_path, name)) and not name.startswith('.')
-                ]
-
-            datasets = []
-            files = list_subdirectories(args.data_file)
-            if not files:
-                datasets = load_dataset(args.data_file, split="train")
-            else:
-                for file in files:
-                    dataset = load_dataset(f'{args.data_file}/{file}', split="train")
-                    datasets.append(dataset)
-                datasets = concatenate_datasets(datasets)
-            self.data = datasets
-            print(len(datasets))
-            
-        elif args.data_type == "jsonl":
-            import jsonlines
-
-            with jsonlines.open(args.data_file) as file:
-                self.data = list(file)
-
+            self.data = self._load_arrow_dataset(args.data_file)
+        elif args.data_type in ['img', 'state']:
+            self.data = self._load_vision_text(args.data_file)
+            if hasattr(args, "copy"):
+                self.data = self.data * args.copy
+        elif args.data_type == 'jsonl':
+            with jsonlines.open(args.data_file) as f:
+                self.data = list(f)
+        elif args.data_type == 'wav':
+            with jsonlines.open(f'{args.data_file}/answer.jsonl') as f:
+                self.data = list(f)
         else:
-            self.data = pd.read_parquet(args.data_file)
+            raise ValueError(f"Unsupported data_type: {args.data_type}")
+        data_nums = len(self.data)
+        print(f"Loaded {len(self.data)} samples for {args.data_type} dataset.")
+        if args.epoch_steps < data_nums :
+            self.data = self.data.select(range(args.epoch_steps))
+            print(f"Trimmed to {len(self.data)} samples for epoch_steps {args.epoch_steps}.")
+    # ------------------------------
+    # 数据加载函数
+    # ------------------------------
 
-        
+    def _load_hf_dataset(self, path):
+        """加载 Hugging Face 格式数据"""
+        subdirs = [
+            os.path.join(path, d)
+            for d in os.listdir(path)
+            if os.path.isdir(os.path.join(path, d))
+        ]
+        if subdirs:
+            datasets = [load_dataset(subdir, split="train") for subdir in subdirs]
+            return concatenate_datasets(datasets)
+        else:
+            return load_dataset(path, split="train")
 
-    def setup(self, rank, world_size, devices, shuffle):
-        self.rank = rank
-        self.world_size = world_size
-        self.index_manager = GlobalIndexManager(rank=rank, device_num=devices, shuffle=shuffle)
-    
+    def _load_arrow_dataset(self, path):
+        """加载 Arrow 格式（支持多个子目录）"""
+        subdirs = [
+            os.path.join(path, d)
+            for d in os.listdir(path)
+            if os.path.isdir(os.path.join(path, d))
+        ]
+        if subdirs:
+            datasets = [load_from_disk(sd) for sd in subdirs]
+            return concatenate_datasets(datasets)
+        return load_from_disk(path)
+
+    def _load_vision_text(self, path):
+        """可根据项目自定义 load_vision_text"""
+        # 假设格式 [{"image": "xxx.jpg", "conversations": [...]}, ...]
+        with jsonlines.open(os.path.join(path, "data.jsonl")) as f:
+            return list(f)
+
+    # ------------------------------
+    # Dataset 必须方法
+    # ------------------------------
+
     def __len__(self):
-        return self.args.epoch_steps * self.args.micro_bsz
-
+        return len(self.data)
 
     def __getitem__(self, idx):
-        idx = self.index_manager.get_next_idx(idx_t=idx) if self.index_manager else idx
-        args = self.args
+        sample = self.data[idx]
+        t = self.data_type
 
-        if args.data_type =='hf':
-            sample = self.data[idx]
-            audio = sample['audio']
-            data_answer = sample['text'] #####caption
-            audio = librosa.resample(audio['array'],orig_sr= audio['sampling_rate'],target_sr= 16000)  # sr=None 保持原采样率
-            sign = audio
-            text_tokens = torch.tensor(pipeline.encode(f'\x16Assistant: {data_answer}\x17'))
-            text_labels = text_tokens
-        elif args.data_type == 'img':
-            sample = self.data[idx]
-            if not isinstance(sample.get('image'), list):
-                image = [sample['image']]
-            else:
-                image = sample['image']
-            mods = [Image.open(f'{args.data_file}/data/{img}').convert('RGB') for img in image]
-            images_length = [576]*len(image)
-            conversation_text = sample['conversations']
-            conversation_text[0]['value'] = '<image>' + conversation_text[0]['value']
-            input_ids, label_ids = process_vision_text(conversation_text, max_length=args.ctx_len, image_token_length=images_length)
-        elif args.data_type == 'arrow':
-            sample = self.data[idx]
-            images = [img.convert('RGB') for img in sample['images']]
-            images_length = [576]*len(images)
-            conversation_text = convert_texts_to_conversations(sample['texts'])
-            for i in range(len(images)):
-                conversation_text[0]['value'] = '<image>' + conversation_text[0]['value']  #need <image> label
-            input_ids, label_ids = process_vision_text(conversation_text, max_length=args.ctx_len, image_token_length=images_length)
-            print('images:', len(images), input_ids)
-        return images, input_ids, label_ids
+        if t == 'img':
+            return self._process_img(sample)
+        elif t == 'arrow':
+            return self._process_arrow(sample)
+        elif t == 'hf':
+            return self._process_hf(sample)
+        elif t == 'wav':
+            return self._process_wav(sample)
+        elif t == 'jsonl':
+            return sample
+        else:
+            raise ValueError(f"Unsupported data_type in __getitem__: {t}")
+
+    # ------------------------------
+    # 各类型处理函数
+    # ------------------------------
+
+    def _process_img(self, sample):
+        images = sample['image']
+        if not isinstance(images, list):
+            images = [images]
+        images = [Image.open(os.path.join(self.args.data_file, "data", img)).convert("RGB") for img in images]
+
+        conversations = sample["conversations"]
+        conversations[0]["value"] = "<image>" + conversations[0]["value"]
+
+        input_ids, label_ids = process_vision_text(conversations, max_length=self.args.ctx_len, image_token_length=[576]*len(images))
+        return {"images": images, "input_ids": input_ids, "labels": label_ids}
+
+    def _process_arrow(self, sample):
+        images = [img.convert("RGB") for img in sample["images"]]
+        texts = convert_texts_to_conversations(sample["texts"])
+        for i in range(len(images)):
+            texts[0]["value"] = "<image>" + texts[0]["value"]
+        input_ids, label_ids = process_vision_text(texts, max_length=self.args.ctx_len, image_token_length=[576]*len(images))
+        return  images, input_ids, label_ids
+    def _process_hf(self, sample):
+        audio = sample["audio"]
+        text = sample["text"]
+        audio_array = librosa.resample(audio["array"], orig_sr=audio["sampling_rate"], target_sr=16000)
+        text_tokens = torch.tensor(pipeline.encode(f"\x16Assistant: {text}\x17"))
+        return {"audio": audio_array, "text": text, "labels": text_tokens}
+
+    def _process_wav(self, sample):
+        audio = librosa.load(sample["path"], sr=16000)[0]
+        return {"audio": audio, "text": sample.get("text", "")}
+
+
+import lightning as L
+from torch.utils.data import DataLoader
+
+class WorldDataModule(L.LightningDataModule):
+    def __init__(self, args, processor=None):
+        super().__init__()
+        self.args = args
+        self.processor = processor
+
+    def setup(self, stage=None):
+        self.train_dataset = WorldDataset(self.args, self.processor)
+
+
+    def train_dataloader(self):
+        def custom_collate_fn(batch):
+            signs, inputs_ids, labels = zip(*batch)
+            all_images = list(signs)
+            inputs_ids = torch.stack(inputs_ids, dim=0)
+            labels = torch.stack(labels, dim=0)
+
+            return all_images, inputs_ids, labels
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.args.micro_bsz,
+            shuffle=True,    # Lightning 自动替换成 DistributedSampler
+            collate_fn=custom_collate_fn,
+            num_workers=self.args.num_workers,
+            pin_memory=True
+        )

@@ -148,6 +148,9 @@ def rwkv_train():
         parser.add_argument("--accumulate_grad_batches", default=1, type=int)
     else:
         parser = Trainer.add_argparse_args(parser)
+    parser.add_argument("--num_workers", default=0, type=int)
+    parser.add_argument("--persistent_workers", action="store_true")
+    parser.add_argument("--prefetch_factor", default=None, type=int)
     args = parser.parse_args()
 
     ########################################################################################################
@@ -273,7 +276,7 @@ def rwkv_train():
     ########################################################################################################
 
     from src.trainer import train_callback
-    from world.dataset import WorldDataset
+    from world.dataset import WorldDataset, WorldDataModule
     from world.world_load import WorldLoading
 
     model = WorldLoading(args)
@@ -291,48 +294,8 @@ def rwkv_train():
         )
 
 
-    def collate_fn(batch):
-        # 解压 batch 中的数据
-        signs, tokens = zip(*batch)
-        
-        # signs 保持 list of lists
-        signs_batch = list(signs)  # 或直接使用 signs
-        
-        # 其他数据进行 stack
-        tokens_batch = list(tokens)
-        return signs_batch, tokens_batch
-    
-    def collate_fn_mod(batch):
-        # 解压 batch 中的数据
-        signs, tokens, labels = zip(*batch)
-        
-        # signs 保持 list of lists
-        signs_batch = list(signs)  # 或直接使用 signs
-        
-        # 其他数据进行 stack
-        tokens_batch = list(tokens)
-
-        labels_batch = list(labels)
-        return signs_batch, tokens_batch, labels_batch
-    train_data = WorldDataset(args)
-    if args.data_shuffle == 1:
-        shuffle = True
-    else:
-        shuffle = False
-
-        
-    train_data = DataLoader(
-        train_data,
-        shuffle=shuffle,
-        pin_memory=True,
-        batch_size=args.micro_bsz,
-        num_workers=1,
-        persistent_workers=False,
-        drop_last=True,
-        collate_fn = collate_fn_mod
-        )
-
-    trainer.fit(model, train_data)
+    datamodule = WorldDataModule(args)
+    trainer.fit(model, datamodule)
 
 
 rwkv_train()

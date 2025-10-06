@@ -114,7 +114,7 @@ class ModRWKV(pl.LightningModule):
 
         
         signs, text_tokens, text_labels = batch
-        signs, idx, targets = [sub for sub in signs if sub] , torch.stack(text_tokens, dim=0).cuda(), torch.stack(text_labels, dim=0).cuda()
+        signs, idx, targets = [sub for sub in signs if sub] , text_tokens.cuda(), text_labels.cuda()
         logits = self(input_ids=idx, signs=signs)
         loss = F.cross_entropy(logits.reshape(-1, logits.size(-1)), targets.reshape(-1))
 
