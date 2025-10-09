@@ -119,18 +119,22 @@ class WorldDataset(Dataset):
         return {"images": images, "input_ids": input_ids, "labels": label_ids}
 
     def _process_arrow(self, sample):
-        images = [img.convert("RGB") for img in sample["images"]]
+        images = [img.convert("RGB") for img in sample["images"]][:3]  # ctx_len limit 3 image
         texts = convert_texts_to_conversations(sample["texts"])
-        for i in range(len(images)):
-            texts[0]["value"] = "<image>" + texts[0]["value"]
+        if "<image>" not in texts[0]["value"]:
+            for i in range(len(images)):
+                    texts[0]["value"] = "<image>" + texts[0]["value"]
         input_ids, label_ids = process_vision_text(texts, max_length=self.args.ctx_len, image_token_length=[576]*len(images))
         return  images, input_ids, label_ids
     def _process_hf(self, sample):
-        audio = sample["audio"]
-        text = sample["text"]
-        audio_array = librosa.resample(audio["array"], orig_sr=audio["sampling_rate"], target_sr=16000)
-        text_tokens = torch.tensor(pipeline.encode(f"\x16Assistant: {text}\x17"))
-        return {"audio": audio_array, "text": text, "labels": text_tokens}
+        images = [img.convert("RGB") for img in sample["images"]]
+        texts = convert_texts_to_conversations(sample["texts"])
+        if "<image>" not in texts[0]["value"]:
+            for i in range(len(images)):
+                    texts[0]["value"] = "<image>" + texts[0]["value"]
+        
+        input_ids, label_ids = process_vision_text(texts, max_length=self.args.ctx_len, image_token_length=[576]*len(images))
+        return  images, input_ids, label_ids
 
     def _process_wav(self, sample):
         audio = librosa.load(sample["path"], sr=16000)[0]

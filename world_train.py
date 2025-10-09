@@ -148,7 +148,7 @@ def rwkv_train():
         parser.add_argument("--accumulate_grad_batches", default=1, type=int)
     else:
         parser = Trainer.add_argparse_args(parser)
-    parser.add_argument("--num_workers", default=0, type=int)
+    parser.add_argument("--num_workers", default=8, type=int)
     parser.add_argument("--persistent_workers", action="store_true")
     parser.add_argument("--prefetch_factor", default=None, type=int)
     args = parser.parse_args()

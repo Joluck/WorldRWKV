@@ -150,17 +150,27 @@ class train_callback(pl.Callback):
                     trainer.my_wandb.log(lll, step=int(real_step))
                 self.write_data(trainer.my_loss, t_cost, kt_s)
                 
-        if (trainer.is_global_zero) or ('deepspeed_stage_3' in args.strategy): # save pth
-            if args.magic_prime > 0:
-                expand_factor = 2 if args.my_qa_mask > 0 else 1
-                if int(real_step) == int(args.magic_prime * expand_factor // args.real_bsz) - 1 + int(args.my_random_steps):
-                    to_save_dict = pl_module.state_dict()
+            if trainer.global_step % 1000000 == 0:
+                to_save_dict = {}
+                rwkv_dict={}
+                for k, state in to_save_dict.items():
+                    if k.startswith('encoder.') and 'encoder' not in args.train_step:
+                        continue
+
+                    if k.startswith('proj.') and 'proj' not in args.train_step:
+                        continue
+                    rwkv_dict[k] = state
+                to_save_dict = rwkv_dict
+                try:
                     my_save(
                         args, trainer,
                         to_save_dict,
-                        f"{args.proj_dir}/rwkv-final.pth",
+                        f"{args.proj_dir}/rwkv-step-{trainer.global_step}.pth",
                     )
-                
+                except Exception as e:
+                    print('Error\n\n', e, '\n\n')
+           
+        
 
     def on_train_epoch_start(self, trainer, pl_module):
         args = self.args
@@ -189,27 +199,15 @@ class train_callback(pl.Callback):
                     to_save_dict = pl_module.state_dict()
                 rwkv_dict={}
                 for k, state in to_save_dict.items():
-                    if 'world_encoder.model'  in k and 'moda' not in args.train_step:
+                    if k.startswith('encoder.') and 'encoder' not in args.train_step:
                         continue
 
-                    if 'world_encoder.adapter'  in k and 'adapter' not in args.train_step:
+                    if k.startswith('proj.') and 'proj' not in args.train_step:
                         continue
                     rwkv_dict[k] = state
                 to_save_dict = rwkv_dict
 
-                # my_save(
-                #         args, trainer,
-                #         to_save_dict,
-                #         f"{args.proj_dir}/rwkv-{args.epoch_begin + trainer.current_epoch}.pth",
-                #     )
-
-
                 try:
-                    # my_save(
-                    #     args, trainer,
-                    #     to_save_modality,
-                    #     f"{args.proj_dir}/rwkv-{args.epoch_begin + trainer.current_epoch}.modality",
-                    # )
 
                     my_save(
                         args, trainer,
