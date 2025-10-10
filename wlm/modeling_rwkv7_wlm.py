@@ -39,7 +39,6 @@ class RWKV7VLModel(RWKV7VLPreTrainedModel):
         self.encoder = Encoder_Registry[config.encoder_type](config.vision_config)
 
         self.proj = Projector_Registry[config.encoder_type] (config.proj_config)
-
         self.llm = RWKV7Model(config.text_config)
 
     def get_input_embeddings(self):
