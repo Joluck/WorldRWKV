@@ -7,6 +7,7 @@ import numpy as np
 from infer.rwkv.utils import PIPELINE
 pipeline = PIPELINE('rwkv', "wr_vocab_v20230424")
 import torch.nn.functional as F
+import sys
 
 # transform = transforms.Compose([
 #     transforms.Resize((512, 512)),
@@ -55,29 +56,45 @@ def process_vision_text(
     image_token_length=None,
     max_length=2048, 
     IGNORE_INDEX=-100,
+    source=None,
+    image_placeholder="<|placeholder|>"
 ):
     inputs = []
     labels = []
-    visual_replicate_index_image = 0
+    index = 0
     for conv in conversations:
         role = conv.get('from', '').lower()
         content = conv.get('value', '')
         if role in ['user','human']:
-            if "<image>" in content:
-                parts = content.split("<image>")
-                new_parts = []
-                for i in range(len(parts) - 1):
-                    new_parts.append(parts[i])
-                    replacement = (
-                        "<|vision_start|>"
-                        + f"<|image_pad|>" * image_token_length[visual_replicate_index_image]
-                        + "<|vision_end|>"
-                    )
-                    new_parts.append(replacement)
-                    visual_replicate_index_image += 1
-                new_parts.append(parts[-1])
-                content = "".join(new_parts)
+            while image_placeholder in content:
+                replacement = (
+                    "<|vision_start|>"
+                    + f"<|image_pad|>" * image_token_length[index]
+                    + "<|vision_end|>"
+                )
+                content = content.replace(image_placeholder, replacement , 1)
+                index += 1
+            #if image_placeholder in content:
+                # parts = content.split("<image>")
+                # new_parts = []
+                # for i in range(len(parts) - 1):
+                #     new_parts.append(parts[i])
+                #     if index >= len(image_token_length):
+                #         sys.stderr.write(f"Error: image_token_length is shorter than the number of <image> tokens in content.******** {source}\n")
+                #     try:
+                #         replacement = (
+                #             "<|vision_start|>"
+                #             + f"<|image_pad|>" * image_token_length[index]
+                #             + "<|vision_end|>"
+                #         )
+                #     except IndexError:
+                #         sys.stderr.write(f"IndexError: image_token_length index out of range for content: {content} in source:******** {source}\n")
+                #     new_parts.append(replacement)
+                #     index += 1
+                # new_parts.append(parts[-1])
+                # content = "".join(new_parts)
             question = f"\x16User:{content}\x17"
+
             input = pipeline.encode(question)
             label = [IGNORE_INDEX]*len(input)
         elif role in ['assistant', 'gpt']:
@@ -86,7 +103,6 @@ def process_vision_text(
             label = input
         inputs += input
         labels += label
-
     inputs = torch.tensor(inputs, dtype=torch.long)
     labels = torch.tensor(labels, dtype=torch.long)
     pad_length = max_length - len(labels) + 1
@@ -187,35 +203,38 @@ def load_vision_text(data_file):
 
     return data
 if __name__ == "__main__":
-    import jsonlines
-    file_path = '/home/rwkv/data/vision_step2/text/chartqa.jsonl'
-    with jsonlines.open(file_path) as f:
-        data = list(f)
-
-    print(data[0])
-    conversations = data[0]['conversations']
-    it, ot = process_vision_text(conversations, image_token_length=[8,8])
-    print(it)
     import torch
+    import torch.nn.functional as F
+    import re
+    # 模拟的 pipeline 编码器    
+    class MockPipeline:
+        def encode(self, text):
+            # 模拟编码器，将文本转换为简单的数字列表
+            return [ord(c) % 100 for c in text]
 
-    B, L, H = 2, 7, 768         # batch=2, seq_len=10, hidden=768
-    device = 'cpu'
-    input_ids = torch.tensor([[2,2,2,1,1,1,1],[1,2,2,3,1,1,1]], dtype=torch.long)
-    # 1.1 文本侧
-    inputs_embeds = torch.zeros(B, L, H, device=device)      # [2, 10, 768]
+        # 模拟的 conversations 数据
+        conversations = [
+            {'from': 'user', 'value': '<image><image>\nThis is an  example <image>.'},
+            {'from': 'assistant', 'value': 'This is the response.'},
+            {'from': 'user', 'value': 'Another <image> example with <image> tokens.'},
+            {'from': 'assistant', 'value': 'Another response.'}
+        ]
+        # 替换匹配到的内容为空字符串
+        while conversations[0]['value'].startswith("<image>"):
+            conversations[0]['value'] = conversations[0]['value'].replace("<image>", "", 1)
+        # 模拟的 image_token_length 数据
+        image_token_length = [3, 2, 4]
 
-    image_embeds = torch.randn(5, H, device=device) 
+        # 调用函数
+        final_input, final_label = process_vision_text(
+            conversations,
+            tokenizer=None,
+            image_token_length=image_token_length,
+            max_length=2048,
+            IGNORE_INDEX=-100,
+            source="test_source",
+        )
 
-    image_mask = get_placeholder_mask(
-                    input_ids, inputs_embeds=inputs_embeds, image_features=image_embeds
-                )
-    print('smask',image_mask, image_mask.shape)
-
-                      # [2,10] 里 6 个 True
-
-        # 2.1 把图像向量插到文本向量里
-    inputs_embeds_after = inputs_embeds.masked_scatter(image_mask, image_embeds)
-
-
-    print('inputs_embeds before :', inputs_embeds)     # [2, 10, 768]
-    print('inputs_embeds after  :', inputs_embeds_after)  # [2, 10, 768]
+        # 输出结果
+        print("Final Input:", final_input)
+        print("Final Label:", final_label)

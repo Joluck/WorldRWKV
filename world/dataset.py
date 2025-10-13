@@ -54,10 +54,18 @@ class WorldDataset(Dataset):
             for d in os.listdir(path)
             if os.path.isdir(os.path.join(path, d))
         ]
-        if subdirs:
-            datasets = [load_dataset(subdir, split="train") for subdir in subdirs]
+        datasets = []
+        for subdir in subdirs:
+            try:
+                ds = load_dataset(subdir, split="train")
+                datasets.append(ds)
+            except Exception as e:
+                print(f"⚠️ 跳过无效数据目录: {subdir}, 原因: {e}")
+
+        if datasets:
             return concatenate_datasets(datasets)
         else:
+            # 说明当前目录本身是dataset根目录
             return load_dataset(path, split="train")
 
     def _load_arrow_dataset(self, path):
@@ -121,17 +129,24 @@ class WorldDataset(Dataset):
     def _process_arrow(self, sample):
         images = [img.convert("RGB") for img in sample["images"]][:3]  # ctx_len limit 3 image
         texts = convert_texts_to_conversations(sample["texts"])
-        if "<image>" not in texts[0]["value"]:
-            for i in range(len(images)):
-                    texts[0]["value"] = "<image>" + texts[0]["value"]
-        input_ids, label_ids = process_vision_text(texts, max_length=self.args.ctx_len, image_token_length=[576]*len(images))
+        source = sample['source']
+        while texts[0]["value"].startswith("<image>"):
+            texts[0]["value"] = texts[0]["value"].replace("<image>", "", 1)
+        for i in range(len(images)):
+                texts[0]["value"] = "<|placeholder|>" + texts[0]["value"]
+        input_ids, label_ids = process_vision_text(texts, max_length=self.args.ctx_len, image_token_length=[576]*len(images), source=source)
         return  images, input_ids, label_ids
     def _process_hf(self, sample):
-        images = [img.convert("RGB") for img in sample["images"]]
-        texts = convert_texts_to_conversations(sample["texts"])
-        if "<image>" not in texts[0]["value"]:
-            for i in range(len(images)):
-                    texts[0]["value"] = "<image>" + texts[0]["value"]
+        image = sample['image']
+        images=[]
+        if not isinstance(image, list) and image is not None:
+            images = [image]
+        images = [img.convert("RGB") for img in images]
+        texts = sample['conversations']
+        while texts[0]["value"].startswith("<image>"):
+            texts[0]["value"] = texts[0]["value"].replace("<image>", "", 1)
+        for i in range(len(images)):
+                texts[0]["value"] = "<|placeholder|>" + texts[0]["value"]
         
         input_ids, label_ids = process_vision_text(texts, max_length=self.args.ctx_len, image_token_length=[576]*len(images))
         return  images, input_ids, label_ids
