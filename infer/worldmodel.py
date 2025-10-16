@@ -73,11 +73,7 @@ class Worldinfer():
         content = ''
         if image is not None:
             for i in range(len(image)):
-                replacement = (
-                            "<|vision_start|>"
-                            + f"<|image_pad|>" * 576
-                            + "<|vision_end|>"
-                )
+                replacement ="<|image_pad|>" * 576
                 content+=replacement
         content = f'\x16User:{content}{text}\x17\x16Assistant:'
         return content

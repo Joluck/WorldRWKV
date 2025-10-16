@@ -41,7 +41,10 @@ class WorldDataset(Dataset):
         data_nums = len(self.data)
         print(f"Loaded {len(self.data)} samples for {args.data_type} dataset.")
         if args.epoch_steps < data_nums :
-            self.data = self.data.select(range(args.epoch_steps))
+            if isinstance(self.data, list):
+                self.data = self.data[:args.epoch_steps]
+            else:
+                self.data = self.data.select(range(args.epoch_steps))
             print(f"Trimmed to {len(self.data)} samples for epoch_steps {args.epoch_steps}.")
     # ------------------------------
     # 数据加载函数
@@ -83,8 +86,8 @@ class WorldDataset(Dataset):
     def _load_vision_text(self, path):
         """可根据项目自定义 load_vision_text"""
         # 假设格式 [{"image": "xxx.jpg", "conversations": [...]}, ...]
-        with jsonlines.open(os.path.join(path, "data.jsonl")) as f:
-            return list(f)
+        return load_vision_text(path)
+ 
 
     # ------------------------------
     # Dataset 必须方法
@@ -120,11 +123,11 @@ class WorldDataset(Dataset):
             images = [images]
         images = [Image.open(os.path.join(self.args.data_file, "data", img)).convert("RGB") for img in images]
 
-        conversations = sample["conversations"]
-        conversations[0]["value"] = "<image>" + conversations[0]["value"]
-
-        input_ids, label_ids = process_vision_text(conversations, max_length=self.args.ctx_len, image_token_length=[576]*len(images))
-        return {"images": images, "input_ids": input_ids, "labels": label_ids}
+        texts = sample["conversations"]
+        for i in range(len(images)):
+                texts[0]["value"] = "<|placeholder|>" + texts[0]["value"]
+        input_ids, label_ids = process_vision_text(texts, max_length=self.args.ctx_len, image_token_length=[576]*len(images))
+        return  images, input_ids, label_ids
 
     def _process_arrow(self, sample):
         images = [img.convert("RGB") for img in sample["images"]][:3]  # ctx_len limit 3 image

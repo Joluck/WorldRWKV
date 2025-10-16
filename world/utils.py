@@ -67,32 +67,8 @@ def process_vision_text(
         content = conv.get('value', '')
         if role in ['user','human']:
             while image_placeholder in content:
-                replacement = (
-                    "<|vision_start|>"
-                    + f"<|image_pad|>" * image_token_length[index]
-                    + "<|vision_end|>"
-                )
-                content = content.replace(image_placeholder, replacement , 1)
+                content = content.replace(image_placeholder, "<|image_pad|>" * image_token_length[index] , 1)
                 index += 1
-            #if image_placeholder in content:
-                # parts = content.split("<image>")
-                # new_parts = []
-                # for i in range(len(parts) - 1):
-                #     new_parts.append(parts[i])
-                #     if index >= len(image_token_length):
-                #         sys.stderr.write(f"Error: image_token_length is shorter than the number of <image> tokens in content.******** {source}\n")
-                #     try:
-                #         replacement = (
-                #             "<|vision_start|>"
-                #             + f"<|image_pad|>" * image_token_length[index]
-                #             + "<|vision_end|>"
-                #         )
-                #     except IndexError:
-                #         sys.stderr.write(f"IndexError: image_token_length index out of range for content: {content} in source:******** {source}\n")
-                #     new_parts.append(replacement)
-                #     index += 1
-                # new_parts.append(parts[-1])
-                # content = "".join(new_parts)
             question = f"\x16User:{content}\x17"
 
             input = pipeline.encode(question)

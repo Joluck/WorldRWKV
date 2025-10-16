@@ -42,16 +42,15 @@ class train_callback(pl.Callback):
         # if args.cuda_cleanup > 0:
         #     torch.cuda.empty_cache()
         real_step = trainer.global_step + args.epoch_begin * args.epoch_steps
-
         # LR schedule
         w_step = args.warmup_steps
         if args.lr_final == args.lr_init or args.epoch_count == 0:
             lr = args.lr_init
         else:
             if 'wsd' == args.lr_schedule:
-                lr = wsd(args.lr_init, 0, real_step, (args.epoch_steps*args.epoch_count)//int(args.devices)//args.accumulate_grad_batches)
+                lr = wsd(args.lr_init, 0, real_step, trainer.num_training_batches)
             else:
-                lr = cos_decay(args.lr_init, args.lr_final, real_step, (args.epoch_steps*args.epoch_count)//int(args.devices)//args.accumulate_grad_batches)
+                lr = cos_decay(args.lr_init, args.lr_final, real_step, trainer.num_training_batches)
         if trainer.global_step < w_step:
             lr = lr * (0.01 + 0.99 * trainer.global_step / w_step)
 

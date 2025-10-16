@@ -7,7 +7,7 @@ def WorldLoading(args):
     model = ModRWKV(args)
     model._set_trainable()
     #model = RWKV(args)
-    print(model)
+    # print(model)
     print(f"########## Loading {args.load_model}... ##########")
     state_dict = torch.load(args.load_model, map_location="cpu", weights_only=True)
     new_state_dict = {
