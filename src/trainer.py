@@ -148,6 +148,26 @@ class train_callback(pl.Callback):
                         lll["kt/s"] = kt_s
                     trainer.my_wandb.log(lll, step=int(real_step))
                 self.write_data(trainer.my_loss, t_cost, kt_s)
+
+            if trainer.global_step % 2000 == 0:
+                to_save_dict = pl_module.state_dict()
+                rwkv_dict={}
+                for k, state in to_save_dict.items():
+                    if k.startswith('encoder.') and 'encoder' not in args.train_step:
+                        continue
+
+                    if k.startswith('proj.') and 'proj' not in args.train_step:
+                        continue
+                    rwkv_dict[k] = state
+                to_save_dict = rwkv_dict
+                try:
+                    my_save(
+                        args, trainer,
+                        to_save_dict,
+                        f"{args.proj_dir}/rwkv-step-{trainer.global_step}.pth",
+                    )
+                except Exception as e:
+                    print('Error\n\n', e, '\n\n')
                 
         if (trainer.is_global_zero) or ('deepspeed_stage_3' in args.strategy): # save pth
             if args.magic_prime > 0:
@@ -196,19 +216,8 @@ class train_callback(pl.Callback):
                     rwkv_dict[k] = state
                 to_save_dict = rwkv_dict
 
-                # my_save(
-                #         args, trainer,
-                #         to_save_dict,
-                #         f"{args.proj_dir}/rwkv-{args.epoch_begin + trainer.current_epoch}.pth",
-                #     )
-
-
                 try:
-                    # my_save(
-                    #     args, trainer,
-                    #     to_save_modality,
-                    #     f"{args.proj_dir}/rwkv-{args.epoch_begin + trainer.current_epoch}.modality",
-                    # )
+
 
                     my_save(
                         args, trainer,
