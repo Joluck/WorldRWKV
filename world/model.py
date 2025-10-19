@@ -93,20 +93,14 @@ class ModRWKV(pl.LightningModule):
         if signs is not None and len(signs)>0:
             images_embeds = self.encoder(signs)
             images_embeds = images_embeds.view(-1, images_embeds.shape[-1])
+            images_embeds = self.proj(images_embeds)  # images_embeds need [B*num_imgs,llm_dim]
+            image_mask = self.get_placeholder_mask(
+                input_ids, inputs_embeds=inputs_embeds, image_features=images_embeds
+            )
+            
+            inputs_embeds = inputs_embeds.masked_scatter(image_mask, images_embeds)
+        logits = self.llm(inputs_embeds=inputs_embeds)
 
-            if self.args.encoder_type=='state': 
-                state = self.proj(images_embeds)
-                logits = self.llm(input_ids=input_ids, past_state = state)
-            else:
-                images_embeds = self.proj(images_embeds)  # images_embeds need [B*num_imgs,llm_dim]
-                image_mask = self.get_placeholder_mask(
-                    input_ids, inputs_embeds=inputs_embeds, image_features=images_embeds
-                )
-                
-                inputs_embeds = inputs_embeds.masked_scatter(image_mask, images_embeds)
-                logits = self.llm(inputs_embeds=inputs_embeds)
-        else:
-            logits = self.llm(input_ids=input_ids)
         return logits
 
     def training_step(self, batch, batch_idx):

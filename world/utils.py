@@ -1,5 +1,4 @@
 
-# from torchvision import transforms
 import torch
 import io
 # import soundfile as sf
@@ -9,23 +8,7 @@ pipeline = PIPELINE('rwkv', "wr_vocab_v20230424")
 import torch.nn.functional as F
 import sys
 
-# transform = transforms.Compose([
-#     transforms.Resize((512, 512)),
-#     transforms.ToTensor()  # 将图像转换为张量
-# ])
-def check_vision_token(conversations):
-    for conv in conversations:
-        role = conv.get('from', '').lower()
-        content = conv.get('value', '')
-        if role in ['user','human']:
-            question = f"\x16User: {content}\x17"
-        elif role in ['assistant', 'gpt']:
-            answer = f"\x16Assistant: {content}\x17"    
-    return question, answer
-
-
-def convert_texts_to_conversations(texts):
-    
+def convert_texts_to_conversations(texts):  
     conversations = []
     try:
         # 遍历texts中所有的user和assistant问答对
@@ -40,16 +23,40 @@ def convert_texts_to_conversations(texts):
                     # 处理每一轮对话
                     conversations.append({'from': 'user', 'value': user_text})
                     conversations.append({'from': 'assistant', 'value': assistant_text})
-        
-        # 给第一个user的value添加<image>标记
-        
-        # 将conversations添加到sample中
+                else:
+                    conversations.append({'from': 'user', 'value': "empty content"})
         conversations
             
     except Exception as e:
         print(f"警告: 对话转换失败: {e}")
     return conversations
+def build_inputs_and_labels(conversations, tokenizer, max_length, IGNORE_INDEX):
+    """快速构建 inputs 和 labels，仿照 Qwen 格式"""
+    inputs, labels = [], []
 
+    for conv in conversations:
+        role = conv.get('from', '').lower()
+        content = conv.get('value', '')
+
+        if role in ['user', 'human']:
+            text = f"\x16User:{content}\x17"
+            encoded = tokenizer.encode(text)
+            label = [IGNORE_INDEX] * len(encoded)
+        elif role in ['assistant', 'gpt']:
+            text = f"\x16Assistant:{content}\x17"
+            encoded = tokenizer.encode(text)
+            label = encoded
+
+        inputs.extend(encoded)
+        labels.extend(label)
+
+    inputs = torch.tensor(inputs, dtype=torch.long)
+    labels = torch.tensor(labels, dtype=torch.long)
+    pad_length = max_length - len(labels) + 1
+    final_input = F.pad(inputs, (0, pad_length), value=0)[:-1]
+    final_label = F.pad(labels, (0, pad_length), value=-100)[1:]
+
+    return final_input, final_label
 def process_vision_text(
     conversations, 
     tokenizer=None, 
@@ -59,32 +66,50 @@ def process_vision_text(
     source=None,
     image_placeholder="<|placeholder|>"
 ):
-    inputs = []
-    labels = []
-    index = 0
-    for conv in conversations:
-        role = conv.get('from', '').lower()
-        content = conv.get('value', '')
-        if role in ['user','human']:
-            while image_placeholder in content:
-                content = content.replace(image_placeholder, "<|image_pad|>" * image_token_length[index] , 1)
-                index += 1
-            question = f"\x16User:{content}\x17"
 
-            input = pipeline.encode(question)
-            label = [IGNORE_INDEX]*len(input)
-        elif role in ['assistant', 'gpt']:
-            answer = f"\x16Assistant:{content}\x17"
-            input = pipeline.encode(answer)
-            label = input
-        inputs += input
-        labels += label
-    inputs = torch.tensor(inputs, dtype=torch.long)
-    labels = torch.tensor(labels, dtype=torch.long)
-    pad_length = max_length - len(labels) + 1
-    final_input = F.pad(inputs, (0, pad_length), value=0)[:-1]
-    final_label = F.pad(labels, (0, pad_length), value=-100)[1:]
-    return final_input, final_label
+    index = 0
+    for text in conversations:
+        while image_placeholder in text['value']:
+            text['value'] = text['value'].replace(image_placeholder, "<|image_pad|>" * image_token_length[index] , 1)
+            index += 1
+    
+    return build_inputs_and_labels(conversations, pipeline, max_length, IGNORE_INDEX)
+
+# def process_vision_text(
+#     conversations, 
+#     tokenizer=None, 
+#     image_token_length=None,
+#     max_length=2048, 
+#     IGNORE_INDEX=-100,
+#     source=None,
+#     image_placeholder="<|placeholder|>"
+# ):
+#     inputs = []
+#     labels = []
+#     index = 0
+#     for conv in conversations:
+#         role = conv.get('from', '').lower()
+#         content = conv.get('value', '')
+#         if role in ['user','human']:
+#             while image_placeholder in content:
+#                 content = content.replace(image_placeholder, "<|image_pad|>" * image_token_length[index] , 1)
+#                 index += 1
+#             question = f"\x16User:{content}\x17"
+
+#             input = pipeline.encode(question)
+#             label = [IGNORE_INDEX]*len(input)
+#         elif role in ['assistant', 'gpt']:
+#             answer = f"\x16Assistant:{content}\x17"
+#             input = pipeline.encode(answer)
+#             label = input
+#         inputs += input
+#         labels += label
+#     inputs = torch.tensor(inputs, dtype=torch.long)
+#     labels = torch.tensor(labels, dtype=torch.long)
+#     pad_length = max_length - len(labels) + 1
+#     final_input = F.pad(inputs, (0, pad_length), value=0)[:-1]
+#     final_label = F.pad(labels, (0, pad_length), value=-100)[1:]
+#     return final_input, final_label
 
 import json
 import os
@@ -190,7 +215,7 @@ if __name__ == "__main__":
 
         # 模拟的 conversations 数据
         conversations = [
-            {'from': 'user', 'value': '<image><image>\nThis is an  example <image>.'},
+            # {'from': 'user', 'value': '<image>\nThis is an  example <image>.'},
             {'from': 'assistant', 'value': 'This is the response.'},
             {'from': 'user', 'value': 'Another <image> example with <image> tokens.'},
             {'from': 'assistant', 'value': 'Another response.'}
@@ -199,18 +224,20 @@ if __name__ == "__main__":
         while conversations[0]['value'].startswith("<image>"):
             conversations[0]['value'] = conversations[0]['value'].replace("<image>", "", 1)
         # 模拟的 image_token_length 数据
-        image_token_length = [3, 2, 4]
-
+        image_token_length = [5, 2, 4]
+        for i in range(len(image_token_length)):
+            conversations[0]["value"] = "<|placeholder|>" + conversations[0]["value"]
+        print(conversations)
         # 调用函数
         final_input, final_label = process_vision_text(
             conversations,
             tokenizer=None,
             image_token_length=image_token_length,
-            max_length=2048,
+            max_length=128,
             IGNORE_INDEX=-100,
             source="test_source",
         )
 
         # 输出结果
-        print("Final Input:", final_input)
-        print("Final Label:", final_label)
+        print("Final Input:", final_input.tolist())
+        print("Final Label:", final_label.tolist())

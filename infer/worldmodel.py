@@ -86,19 +86,3 @@ class Worldinfer():
         return result, state
 
 
-# def process_wr(text, image = None):
-#     content = ''
-#     if image is not None:
-#         for i in range(len(image)):
-#             replacement = (
-#                         "<|vision_start|>"
-#                         + f"<|vision_pad|>" * 3
-#                         + "<|vision_end|>"
-#             )
-#             content+=replacement
-#     content = f'\x16User: {content}{text}\x17\x16Assistant:'
-#     return content
-# text= 'who are you'
-# tt = process_wr(text, [1,2])
-# print(tt.split("<image>"))
-# print(tt)

@@ -63,7 +63,7 @@ class SiglipEncoder(nn.Module):
 
         # self.adapter = VisualAdapter(self.encoder_dim, project_dim)
     def forward(self, x):
-        x= self.image_processor(x, return_tensors="pt")['pixel_values'].to(self.device,dtype=torch.bfloat16)
+        x= self.image_processor(x, return_tensors="pt", input_data_format="channels_last")['pixel_values'].to(self.device,dtype=torch.bfloat16)
         x = self.model(x, output_hidden_states=True).last_hidden_state
         return x
 
