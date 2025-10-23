@@ -73,23 +73,6 @@ parser.add_argument("--my_testing", default='x052', type=str)
 parser.add_argument("--my_exit", default=99999999, type=int)
 parser.add_argument("--my_exit_tokens", default=0, type=int)
 
-parser.add_argument("--peft", default="none", type=str)# lora pissa bone
-#parser.add_argument("--train_parts", default=["time", "ln"], type=list)##emb , head
-parser.add_argument("--train_parts", default=["time", "ln"], nargs='*', help="List of parts to train emb head time ln")
-
-#LORA
-parser.add_argument("--lora_config", default='{"lora_load":"", "lora_r":8, "lora_alpha":32, "lora_dropout":0.01}', type=json.loads)
-
-
-# #LISA
-# parser.add_argument("--lisa_config", default='{"lisa_r":2, "lisa_k":100}', type=json.loads)
-
-#PISSA
-parser.add_argument("--pissa_config", default='{"pissa_load":"", "pissa_init":"", "pissa_r":8, "svd_niter":4}', type=json.loads)
-
-#Bone
-parser.add_argument("--bone_config", default='{"bone_mode":"mode", "bone_load":"", "bone_r":64}', type=json.loads)
-
 
 #quant
 parser.add_argument("--quant", default="none", type=str)
@@ -146,6 +129,8 @@ parser.add_argument("--accumulate_grad_batches", default=1, type=int)
 parser.add_argument("--num_workers", default=8, type=int)
 parser.add_argument("--persistent_workers", action="store_true")
 parser.add_argument("--prefetch_factor", default=None, type=int)
+
+parser.add_argument("--grad_cp_layers", default=0, type=int)
 args = parser.parse_args()
 
 ########################################################################################################

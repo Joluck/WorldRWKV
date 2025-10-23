@@ -34,14 +34,16 @@ class RWKV7(nn.Module):
             inputs_embeds = self.emb(input_ids)
         v_first = torch.empty_like(inputs_embeds)
 
-        for block in self.blocks:
+        for i, block in enumerate(self.blocks):
             if args.grad_cp == 1:
-                if args.train_type == 'state' or args.peft !='none':
-                    inputs_embeds, v_first = torch_checkpoint(block, inputs_embeds, v_first ,attention_mask,past_state,use_reentrant=False)
-                else:
-                    inputs_embeds, v_first = deepspeed.checkpointing.checkpoint(block, inputs_embeds, v_first, attention_mask, past_state)
+                inputs_embeds, v_first = deepspeed.checkpointing.checkpoint(block, inputs_embeds, v_first, attention_mask, past_state)
             else:
-                inputs_embeds, v_first = block(inputs_embeds, v_first, attention_mask=attention_mask, past_state=past_state)
+                if i<args.grad_cp_layers:
+                    inputs_embeds, v_first = deepspeed.checkpointing.checkpoint(
+                        block, inputs_embeds, v_first, attention_mask, past_state
+                    )
+                else:
+                    inputs_embeds, v_first = block(inputs_embeds, v_first, attention_mask=attention_mask, past_state=past_state)
 
         inputs_embeds = self.ln_out(inputs_embeds)
         inputs_embeds = self.head(inputs_embeds)
