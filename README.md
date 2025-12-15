@@ -1,6 +1,6 @@
 
 <h1 align="center">
-  <p>ZoomFly: Transformer Multimodality in Linear Time</p>
+  <p>ModRWKV: Transformer Multimodality in Linear Time</p>
 </h1>
 <p align="center">
         📖 <a href="">中文</a>&nbsp&nbsp | &nbsp&nbsp🤗 <a href="https://huggingface.co/ZoomFly">Hugging Face</a>&nbsp&nbsp | &nbsp&nbsp📑 <a href="https://arxiv.org/abs/2505.14505">Paper <b>(EMNLP'25 Oral)</b></a>&nbsp&nbsp | &nbsp&nbsp🤖 <a href="https://discord.com/invite/bDSBUMeFpc">Discord</a>
