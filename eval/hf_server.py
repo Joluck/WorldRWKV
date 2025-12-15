@@ -8,11 +8,11 @@ from pydantic import BaseModel
 from PIL import Image
 import uvicorn
 import argparse
-from wlm.encoder.siglip_encoder import SiglipEncoder
+from mlm.encoder.siglip_encoder import SiglipEncoder
 import types
 import torch
-from wlm.processing_wlm import ProcessWLM
-from wlm.modeling_rwkv7_wlm import RWKV7VLForConditionalGeneration  
+from mlm.processing_mlm import ProcessMLM
+from mlm.modeling_mlm import RWKV7VLForConditionalGeneration  
 
 
 
@@ -29,13 +29,8 @@ first_question = False
 # model = Worldinfer(model_path=args.llm_path, encoder_type=args.encoder_type, encoder_path=args.encoder_path)
 model = RWKV7VLForConditionalGeneration.from_pretrained(args.llm_path, trust_remote_code=True,torch_dtype=torch.bfloat16).eval()
 # tokenizer = AutoTokenizer.from_pretrained('/home/rwkv/JL/g1fla', trust_remote_code=True)
-processor = ProcessWLM(args.llm_path, trust_remote_code=True)
-# 示例配置字典
-config_dict = {'encoder_path': '/home/rwkv/models/siglip2'}
+processor = ProcessMLM(args.llm_path, trust_remote_code=True)
 
-# 将字典转换为对象
-config = types.SimpleNamespace(**config_dict)
-model.model.encoder=  SiglipEncoder(config).to(dtype=torch.bfloat16)
 model = model.cuda()
 
 
@@ -151,21 +146,20 @@ async def chat_completions(request: ChatCompletionRequest):
         if image is None:
             raise HTTPException(status_code=400, detail="Image is required")
         text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        images = [[image]]#processor.process_images(messages)
-        inputs = processor(text=text, images=images).to('cuda')
+        inputs = processor(text=text, images=[image] ).to('cuda')
         generated_ids = model.generate(
             **inputs,
             max_new_tokens=512,
             do_sample=True,
             temperature=1.0,
-            top_p=0.3,
-            repetition_penalty=1.2
+            top_p=0.0,
+            repetition_penalty=1.0
         )
         generated_ids = [
             output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)
         ]
 
-        result = processor.batch_decode(generated_ids, skip_special_tokens=False)[0]
+        result = processor.batch_decode(generated_ids, skip_special_tokens=False)[0].replace('\u0017', '')
         current_state = None
         bot_response = result
 

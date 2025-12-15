@@ -1,26 +1,18 @@
 
 <h1 align="center">
-  <p>WorldRWKV: Exploring RWKV7’s Understanding Capabilities of Any Modality in the World</p>
-  
+  <p>ZoomFly: Transformer Multimodality in Linear Time</p>
 </h1>
+<p align="center">
+        📖 <a href="">中文</a>&nbsp&nbsp | &nbsp&nbsp🤗 <a href="https://huggingface.co/ZoomFly">Hugging Face</a>&nbsp&nbsp | &nbsp&nbsp📑 <a href="https://arxiv.org/abs/2505.14505">Paper <b>(EMNLP'25 Oral)</b></a>&nbsp&nbsp | &nbsp&nbsp🤖 <a href="https://discord.com/invite/bDSBUMeFpc">Discord</a>
 
-\[ English | [中文](README_zh.md) \]
+
+</p>
+
 ## Introduction
-Our goal is to implement training and inference in any modality using pure RWKV7 architecture. Currently, we can switch modalities freely using different encoders. In the future, we aim to achieve end-to-end cross-modal inference and explore the prototype of  World Model with RWKV7. The project is still in its early stages, with many areas requiring further optimization. We welcome you to join us on this journey.
-
-
-
-
-
-
-
-- Model Download：[HFModel](https://huggingface.co/WorldRWKV).  
-- Demos：[Demo](https://shoumenchougou.github.io/testforvideo/)
-- Join Us：[Discord](https://discord.com/invite/bDSBUMeFpc) QQ: 1015471226
-
-## Release
-- [5/21] 🔥 Release Repo [**ModRWKV: Transformer Multimodality in Linear Time**](https://arxiv.org/abs/2505.14505).  [HFModel](https://huggingface.co/WorldRWKV).
-
+Our goal is to implement training and inference in any modality using pure **linear model** architecture. 
+### SUPPORT
+- [huggingface](https://github.com/huggingface/transformers)
+- [fla](https://github.com/fla-org/flash-linear-attention)
 ## Building Env
 - Clone repo and direct to target DIR
 ```

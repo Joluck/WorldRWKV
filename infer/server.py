@@ -22,8 +22,11 @@ args = parser.parse_args()
 
 current_state = None
 first_question = False
-
-model = Worldinfer(model_path=args.llm_path, encoder_type=args.encoder_type, encoder_path=args.encoder_path)
+if 'auto' in args.encoder_type:
+    processor = 'auto'
+else:
+    processor = None
+model = Worldinfer(model_path=args.llm_path, encoder_type=args.encoder_type, encoder_path=args.encoder_path, processor=processor)
 
 app = FastAPI(title="WorldRWKV API", version="1.0.0")
 

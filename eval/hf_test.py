@@ -1,11 +1,10 @@
-from wlm.encoder.siglip_encoder import SiglipEncoder
-import types
 import torch
-from wlm.processing_wlm import ProcessWLM
-from wlm.modeling_rwkv7_wlm import RWKV7VLForConditionalGeneration  
-model = RWKV7VLForConditionalGeneration.from_pretrained('/home/rwkv/JL/g1fla', trust_remote_code=True,torch_dtype=torch.bfloat16)
-# tokenizer = AutoTokenizer.from_pretrained('/home/rwkv/JL/g1fla', trust_remote_code=True)
-processor = ProcessWLM('/home/rwkv/JL/g1fla', trust_remote_code=True)
+from mlm.processing_mlm import ProcessMLM
+from mlm.modeling_mlm import RWKV7VLForConditionalGeneration  
+
+path = "/home/rwkv/jl/models/rwkv7-0.4b-8k"
+model = RWKV7VLForConditionalGeneration.from_pretrained(path, trust_remote_code=True,torch_dtype=torch.bfloat16)
+processor = ProcessMLM(path, trust_remote_code=True)
 
 model = model.cuda()
 messages = [
@@ -14,23 +13,21 @@ messages = [
         "content": [
             {
                 "type": "image",
-                "image": "/home/rwkv/JL/03-Confusing-Pictures.jpg",
+                "image": './docs/03-Confusing-Pictures.jpg',
             },
-            {"type": "text", "text": "Describe this image."},
+            {"type": "text", "text": "Describe image"},
         ],
     }
 ]
 text = processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-images = processor.process_images(messages)
-print(images)
-inputs = processor(text=text, images=images).to('cuda')
+inputs = processor(text=text, images=None,messages=messages).to('cuda')
 generated_ids = model.generate(
     **inputs,
     max_new_tokens=512,
     do_sample=True,
     temperature=1.0,
-    top_p=0.3,
-    repetition_penalty=1.2
+    top_p=0.0,
+    repetition_penalty=1.0
 )
 generated_ids = [
     output_ids[len(input_ids):] for input_ids, output_ids in zip(inputs.input_ids, generated_ids)

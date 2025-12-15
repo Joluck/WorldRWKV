@@ -14,11 +14,12 @@ os.environ["RWKV_CUDA_ON"] = '1' # '1' to compile CUDA kernel (10x faster), requ
 from infer.rwkv.model import RWKV # pip install rwkv
 from infer.rwkv.utils import PIPELINE, PIPELINE_ARGS
 
-from world.registry import Projector_Registry, Encoder_Registry
+from lg_train.registry import Projector_Registry, Encoder_Registry
+from lg_train.prepare.custom_transformers import get_image_processor
 
 
 class Worldinfer():
-    def __init__(self, model_path, encoder_type, encoder_path, strategy='cuda bf16', args=None):
+    def __init__(self, model_path, encoder_type, encoder_path, strategy='cuda bf16', args=None, processor=None, use_conv=False):
 
         ss = strategy.split(' ')
         DEVICE = ss[0]
@@ -34,9 +35,13 @@ class Worldinfer():
         self.model_weight = torch.load(model_path + '.pth', map_location=DEVICE)
         proj_dict = {}
         llm_dict = {}
+        encoder_dict = {}
         for key, value in self.model_weight.items():
             if 'emb.weight' in key:
                 _, n_embd = value.shape
+            if key.startswith('encoder.'):
+                k = key.replace('encoder.', '', 1) 
+                encoder_dict[k] = value 
             if key.startswith('proj.'):
                 k = key.replace('proj.', '', 1) 
                 proj_dict[k] = value 
@@ -61,27 +66,40 @@ class Worldinfer():
             'encoder_path': encoder_path,
             'project_dim' : n_embd
         }
-        self.modality = Encoder_Registry[encoder_type] (**config).to('cuda', self.DTYPE)        
+        self.encoder = Encoder_Registry[encoder_type] (**config).to('cuda', self.DTYPE).eval()  
+        if processor is not None:
+            self.image_processor = get_image_processor(768, 384, True)
+            use_conv = True
         proj_config = {
             'encoder_dim': 768,
-            'project_dim': n_embd
+            'project_dim': n_embd,
+            'use_conv': use_conv
         }
         self.proj = Projector_Registry[encoder_type] (**proj_config).to('cuda', self.DTYPE)    
+        self.encoder.load_state_dict(encoder_dict)
         self.proj.load_state_dict(proj_dict)
 
-    def process_wr(self, text, image = None):
+        self.processor = processor
+
+    def process_wr(self, text, image = None, img_token_len = 576):
         content = ''
         if image is not None:
             for i in range(len(image)):
-                replacement ="<|image_pad|>" * 576
+                replacement ="<|image_pad|>" * img_token_len
                 content+=replacement
         content = f'\x16User:{content}{text}\x17\x16Assistant:'
         return content
-    def generate(self, text, modality=None, state=None):
+    def generate(self, text, modality=None, state=None, img_token_len = 576):
         if modality is not None:
-            modality = self.proj(self.modality(modality))
-            
-        text = self.process_wr(text, modality)
+            if self.processor is not None:
+                pixel_values,_ = self.image_processor(modality)
+                pixel_values = pixel_values.to(device='cuda',dtype=self.DTYPE)
+                img_token_len = 115
+            else:
+                pixel_values = modality
+            images_embeds = self.encoder(pixel_values)
+            modality = self.proj(images_embeds)
+        text = self.process_wr(text, modality, img_token_len)
         result, state = self.pipeline.generate(text, token_count=500, args=self.args, callback=None, state=state, sign=modality)
         return result, state
 

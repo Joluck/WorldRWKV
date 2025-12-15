@@ -1,4 +1,4 @@
-python hf_server.py \
-    --host 192.168.0.82 \
+python -m eval.hf_server \
+    --host 192.168.0.106 \
     --port 8000 \
-    --llm_path /home/rwkv/JL/g1fla
+    --llm_path /home/rwkv/jl/models/modrwkv-0.4b-hf/

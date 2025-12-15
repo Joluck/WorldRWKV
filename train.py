@@ -126,7 +126,7 @@ parser.add_argument("--num_nodes", default=1, type=int)
 parser.add_argument("--precision", default="fp16", type=str)
 parser.add_argument("--accumulate_grad_batches", default=1, type=int)
 
-parser.add_argument("--num_workers", default=8, type=int)
+parser.add_argument("--num_workers", default=16, type=int)
 parser.add_argument("--persistent_workers", action="store_true")
 parser.add_argument("--prefetch_factor", default=None, type=int)
 
@@ -255,9 +255,9 @@ else:
 
 ########################################################################################################
 
-from src.trainer import train_callback
-from world.dataset import WorldDataModule
-from world.world_load import WorldLoading
+from lg_train.trainer import train_callback
+from lg_train.dataset import WorldDataModule
+from lg_train.world_load import WorldLoading
 
 model = WorldLoading(args)
 
