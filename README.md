@@ -10,9 +10,7 @@
 
 ## Introduction
 Our goal is to implement training and inference in any modality using pure **linear model** architecture. 
-### SUPPORT
-- [huggingface](https://github.com/huggingface/transformers)
-- [fla](https://github.com/fla-org/flash-linear-attention)
+
 ## Building Env
 - Clone repo and direct to target DIR
 ```
